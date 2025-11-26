@@ -20,6 +20,7 @@ func addColCmd(parent *cobra.Command, cfg *core.Config) {
 	colCmd.AddCommand(newColValsCmd(cfg))
 	colCmd.AddCommand(newColFirstCmd(cfg))
 	colCmd.AddCommand(newColDupKeyCmd(cfg))
+	colCmd.AddCommand(newColListCmd(cfg))
 
 	parent.AddCommand(colCmd)
 }
@@ -209,6 +210,24 @@ func newColDupKeyCmd(cfg *core.Config) *cobra.Command {
 	cmd.Flags().BoolVar(&requireAll, "require-all", false, "skip rows where any BY field is empty")
 	cmd.Flags().StringVar(&nullTok, "null-token", "<EMPTY>", "token to substitute for empty BY fields (ignored if --require-all)")
 
+	return cmd
+}
+
+func newColListCmd(cfg *core.Config) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list [files...]",
+		Short: "List unique column names across files",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			list, err := core.ExpandFiles(args)
+			if err != nil {
+				return err
+			}
+			return ops.ListColumns(list, ops.ListColsOpts{
+				Config: cfg,
+			})
+		},
+	}
 	return cmd
 }
 
