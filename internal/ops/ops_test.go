@@ -1022,6 +1022,137 @@ func TestCompareColumnsEdgeCases(t *testing.T) {
 	})
 }
 
+func TestCompareColumnsOutputFormats(t *testing.T) {
+	cfg := testConfig()
+
+	t.Run("lines format", func(t *testing.T) {
+		var output string
+		captureStderr(func() {
+			output = captureStdout(func() {
+				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+					ColA:   "ColA",
+					ColB:   "ColB",
+					Format: OutputLines,
+					Config: cfg,
+				})
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			})
+		})
+		if !strings.Contains(output, "compare.csv line") {
+			t.Errorf("expected file and line in output, got: %s", output)
+		}
+		if !strings.Contains(output, "A:") || !strings.Contains(output, "B:") {
+			t.Errorf("expected A: and B: labels in output, got: %s", output)
+		}
+	})
+
+	t.Run("table format", func(t *testing.T) {
+		var output string
+		captureStderr(func() {
+			output = captureStdout(func() {
+				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+					ColA:   "ColA",
+					ColB:   "ColB",
+					Format: OutputTable,
+					Config: cfg,
+				})
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			})
+		})
+		if !strings.Contains(output, "ColA") || !strings.Contains(output, "ColB") {
+			t.Errorf("expected column headers in output, got: %s", output)
+		}
+		if !strings.Contains(output, "|") {
+			t.Errorf("expected pipe separator in table output, got: %s", output)
+		}
+		if !strings.Contains(output, "-+-") {
+			t.Errorf("expected header separator in table output, got: %s", output)
+		}
+		if strings.Contains(output, "compare.csv") {
+			t.Errorf("table format should not contain filename, got: %s", output)
+		}
+	})
+
+	t.Run("csv format", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		csvPath := filepath.Join(tmpDir, "mismatches.csv")
+
+		captureStderr(func() {
+			_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:    "ColA",
+				ColB:    "ColB",
+				Format:  OutputCSV,
+				CSVPath: csvPath,
+				Config:  cfg,
+			})
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+
+		content, err := os.ReadFile(csvPath)
+		if err != nil {
+			t.Fatalf("failed to read csv: %v", err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+		if len(lines) != 3 {
+			t.Errorf("expected 3 lines in CSV (header + 2 mismatches), got %d: %s", len(lines), string(content))
+		}
+		if lines[0] != "ColA,ColB,file,line" {
+			t.Errorf("unexpected CSV header: %s", lines[0])
+		}
+		if !strings.Contains(lines[1], "compare.csv") || !strings.Contains(lines[1], "4") {
+			t.Errorf("expected file and line in CSV row, got: %s", lines[1])
+		}
+	})
+
+	t.Run("csv format no mismatches", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		csvPath := filepath.Join(tmpDir, "empty.csv")
+
+		captureStderr(func() {
+			_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:    "ColA",
+				ColB:    "ColA",
+				Format:  OutputCSV,
+				CSVPath: csvPath,
+				Config:  cfg,
+			})
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+
+		if _, err := os.Stat(csvPath); !os.IsNotExist(err) {
+			t.Errorf("CSV file should not be created when no mismatches")
+		}
+	})
+
+	t.Run("table format no mismatches", func(t *testing.T) {
+		var output string
+		captureStderr(func() {
+			output = captureStdout(func() {
+				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+					ColA:   "ColA",
+					ColB:   "ColA",
+					Format: OutputTable,
+					Config: cfg,
+				})
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			})
+		})
+		if output != "" {
+			t.Errorf("expected empty output when no mismatches, got: %s", output)
+		}
+	})
+}
+
 // TestDupKeyEdgeCases tests edge cases in DupKey
 func TestDupKeyEdgeCases(t *testing.T) {
 	cfg := testConfig()

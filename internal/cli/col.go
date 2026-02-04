@@ -27,6 +27,7 @@ func addColCmd(parent *cobra.Command, cfg *core.Config) {
 
 func newColCmpCmd(cfg *core.Config) *cobra.Command {
 	var ignoreCase, allowEmpty bool
+	var toFlag string
 
 	cmd := &cobra.Command{
 		Use:   "cmp <A> <B> [files...]",
@@ -46,12 +47,34 @@ func newColCmpCmd(cfg *core.Config) *cobra.Command {
 				return err
 			}
 
+			format := ops.OutputLines
+			var csvPath string
+			if toFlag != "" {
+				parts := strings.SplitN(toFlag, " ", 2)
+				switch parts[0] {
+				case "lines":
+					format = ops.OutputLines
+				case "table":
+					format = ops.OutputTable
+				case "csv":
+					format = ops.OutputCSV
+					if len(parts) < 2 || parts[1] == "" {
+						return fmt.Errorf("--to csv requires a path argument (e.g., --to 'csv /path/to/output.csv')")
+					}
+					csvPath = parts[1]
+				default:
+					return fmt.Errorf("unknown --to format %q (use lines, table, or csv)", parts[0])
+				}
+			}
+
 			res, err := ops.CompareColumns(list, ops.CompareOpts{
 				ColA:       A,
 				ColB:       B,
 				IgnoreCase: ignoreCase,
 				AllowEmpty: allowEmpty,
 				Quiet:      cfg.Quiet,
+				Format:     format,
+				CSVPath:    csvPath,
 				Config:     cfg,
 			})
 			if err != nil {
@@ -67,6 +90,7 @@ func newColCmpCmd(cfg *core.Config) *cobra.Command {
 
 	cmd.Flags().BoolVar(&ignoreCase, "ignore-case", false, "case-insensitive comparison")
 	cmd.Flags().BoolVar(&allowEmpty, "allow-empty", false, "compare even if one/both empty")
+	cmd.Flags().StringVar(&toFlag, "to", "", "output format: lines (default), table, or 'csv /path/to/file.csv'")
 
 	return cmd
 }
