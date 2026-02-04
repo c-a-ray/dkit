@@ -76,10 +76,13 @@ func ParseDelim(d string) (rune, error) {
 	if d == "|" || d == "pipe" {
 		return '|', nil
 	}
+	if d == " " || d == "space" {
+		return ' ', nil
+	}
 
 	r := []rune(d)
 	if len(r) != 1 {
-		return 0, fmt.Errorf("--delim must be a single character or one of: tab, comma, pipe")
+		return 0, fmt.Errorf("--delim must be a single character or one of: tab, comma, pipe, space")
 	}
 
 	return r[0], nil

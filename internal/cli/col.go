@@ -214,6 +214,9 @@ func newColDupKeyCmd(cfg *core.Config) *cobra.Command {
 }
 
 func newColListCmd(cfg *core.Config) *cobra.Command {
+	var sorted, oneline bool
+	var onelineDelim string
+
 	cmd := &cobra.Command{
 		Use:   "list [files...]",
 		Short: "List unique column names across files",
@@ -223,11 +226,25 @@ func newColListCmd(cfg *core.Config) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			delim, err := core.ParseDelim(onelineDelim)
+			if err != nil {
+				return err
+			}
+
 			return ops.ListColumns(list, ops.ListColsOpts{
-				Config: cfg,
+				Sorted:       sorted,
+				OneLine:      oneline,
+				OneLineDelim: string(delim),
+				Config:       cfg,
 			})
 		},
 	}
+
+	cmd.Flags().BoolVar(&sorted, "sorted", false, "sort columns alphabetically")
+	cmd.Flags().BoolVar(&oneline, "oneline", false, "print all columns on one line")
+	cmd.Flags().StringVarP(&onelineDelim, "outdelim", "o", "comma", "output delimiter for --oneline (tab, comma, pipe, space, or single char)")
+
 	return cmd
 }
 

@@ -5,12 +5,16 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/c-a-ray/dkit/internal/core"
 )
 
 type ListColsOpts struct {
-	Config *core.Config
+	Sorted       bool
+	OneLine      bool
+	OneLineDelim string
+	Config       *core.Config
 }
 
 // ListColumns prints unique column names from all provided files
@@ -19,7 +23,8 @@ func ListColumns(files []string, o ListColsOpts) error {
 		return fmt.Errorf("no files")
 	}
 
-	cols := map[string]struct{}{}
+	seen := map[string]struct{}{}
+	var out []string
 
 	for _, path := range files {
 		rc, err := core.OpenWithEncoding(path, o.Config.Encoding)
@@ -41,19 +46,24 @@ func ListColumns(files []string, o ListColsOpts) error {
 		}
 
 		for _, h := range hdr {
-			cols[h] = struct{}{}
+			if _, ok := seen[h]; !ok {
+				seen[h] = struct{}{}
+				out = append(out, h)
+			}
 		}
 		rc.Close()
 	}
 
-	out := make([]string, 0, len(cols))
-	for c := range cols {
-		out = append(out, c)
+	if o.Sorted {
+		sort.Strings(out)
 	}
-	sort.Strings(out)
 
-	for _, c := range out {
-		fmt.Println(c)
+	if o.OneLine {
+		fmt.Println(strings.Join(out, o.OneLineDelim))
+	} else {
+		for _, c := range out {
+			fmt.Println(c)
+		}
 	}
 
 	return nil
