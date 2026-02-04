@@ -32,6 +32,7 @@ type ValsOpts struct {
 	NullToken  string
 	FixedStart int
 	FixedEnd   int
+	Filter     Filter // row filter conditions (--when flags)
 	Config     *core.Config
 }
 
@@ -43,6 +44,11 @@ func ColumnValues(files []string, o ValsOpts) error {
 	}
 	uniq := map[string]struct{}{}
 	freq := map[string]int{}
+
+	// Check for incompatible options
+	if !o.Filter.IsEmpty() && o.FixedStart > 0 && o.FixedEnd >= o.FixedStart {
+		return errors.New("--when and --fixed-width cannot be used together")
+	}
 
 	for _, path := range files {
 		if o.FixedStart > 0 && o.FixedEnd >= o.FixedStart {
@@ -60,14 +66,25 @@ func ColumnValues(files []string, o ValsOpts) error {
 		cr := core.NewCSVReader(rc, o.Config.Delim, o.Config.LazyQuotes)
 
 		var idx int
+		var hdr []string
+		var resolvedFilter ResolvedFilter
+
 		if o.Config.NoHeader {
 			idx, err = strconv.Atoi(o.Column)
 			if err != nil || idx < 0 {
 				rc.Close()
 				return fmt.Errorf("--no-header requires numeric column index, got %q", o.Column)
 			}
+			// Resolve filter with no header
+			if !o.Filter.IsEmpty() {
+				resolvedFilter, err = o.Filter.Resolve(nil, true)
+				if err != nil {
+					rc.Close()
+					return err
+				}
+			}
 		} else {
-			hdr, err := cr.Read()
+			hdr, err = cr.Read()
 			if err == io.EOF {
 				fmt.Fprintf(os.Stderr, "[WARN] %s is empty\n", path)
 				rc.Close()
@@ -89,6 +106,15 @@ func ColumnValues(files []string, o ValsOpts) error {
 				rc.Close()
 				continue
 			}
+			// Resolve filter with header
+			if !o.Filter.IsEmpty() {
+				resolvedFilter, err = o.Filter.Resolve(hdr, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[WARN] %s: %v\n", path, err)
+					rc.Close()
+					continue
+				}
+			}
 		}
 
 		for {
@@ -101,6 +127,9 @@ func ColumnValues(files []string, o ValsOpts) error {
 				break
 			}
 			if idx >= len(rec) {
+				continue
+			}
+			if !resolvedFilter.Match(rec) {
 				continue
 			}
 			v := strings.TrimSpace(rec[idx])

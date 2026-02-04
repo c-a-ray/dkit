@@ -74,6 +74,7 @@ func newColCmpCmd(cfg *core.Config) *cobra.Command {
 func newColValsCmd(cfg *core.Config) *cobra.Command {
 	var nullTok string
 	var fixed string
+	var whenFlags []string
 
 	cmd := &cobra.Command{
 		Use:   "vals <uniq|freq> <COL> [files...]",
@@ -97,10 +98,16 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 				return err
 			}
 
+			filter, err := ops.ParseWhenFlags(whenFlags)
+			if err != nil {
+				return fmt.Errorf("invalid --when: %w", err)
+			}
+
 			opt := ops.ValsOpts{
 				Column:    col,
 				Mode:      ops.ValsUniq,
 				NullToken: nullTok,
+				Filter:    filter,
 				Config:    cfg,
 			}
 
@@ -122,6 +129,7 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 
 	cmd.Flags().StringVar(&nullTok, "null-token", "<EMPTY>", "token to print for empty cells (freq only)")
 	cmd.Flags().StringVar(&fixed, "fixed-width", "", "use fixed-width extraction START:END (1-based)")
+	cmd.Flags().StringArrayVarP(&whenFlags, "when", "w", nil, "filter rows by condition (repeatable, ANDed; use | for OR)")
 
 	return cmd
 }
