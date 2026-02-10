@@ -22,10 +22,10 @@ const (
 )
 
 // CompareOpts configures how two columns are compared across CSV files
-// ColA and ColB may be header names or index strings
+// ColA and TargetCols may be header names or index strings
 type CompareOpts struct {
 	ColA       string
-	ColB       string
+	TargetCols []string // columns to compare against (OR logic: A must match at least one)
 	IgnoreCase bool
 	AllowEmpty bool
 	Quiet      bool
@@ -43,16 +43,20 @@ type CompareResult struct {
 
 // mismatch holds data about a single mismatching row
 type mismatch struct {
-	file string
-	line int
-	valA string
-	valB string
+	file       string
+	line       int
+	valA       string
+	targetVals []string // values from all target columns
 }
 
-// CompareColumns compares two columns across one or more files
+// CompareColumns compares ColA against TargetCols across one or more files.
+// A row is a match if ColA equals ANY of the target columns (OR logic).
 func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 	if len(files) == 0 {
 		return CompareResult{}, errors.New("no files")
+	}
+	if len(o.TargetCols) == 0 {
+		return CompareResult{}, errors.New("no target columns specified")
 	}
 
 	res := CompareResult{}
@@ -66,7 +70,8 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 		}
 
 		cr := core.NewCSVReader(rc, o.Config.Delim, o.Config.LazyQuotes)
-		var iA, iB int
+		var iA int
+		targetIdxs := make([]int, len(o.TargetCols))
 
 		if o.Config.NoHeader {
 			ia, err := parseIndex(o.ColA)
@@ -74,14 +79,16 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 				rc.Close()
 				return res, fmt.Errorf("--no-header: col A must be index: %w", err)
 			}
+			iA = ia
 
-			ib, err := parseIndex(o.ColB)
-			if err != nil {
-				rc.Close()
-				return res, fmt.Errorf("--no-header: col B must be index: %w", err)
+			for i, col := range o.TargetCols {
+				idx, err := parseIndex(col)
+				if err != nil {
+					rc.Close()
+					return res, fmt.Errorf("--no-header: target col %q must be index: %w", col, err)
+				}
+				targetIdxs[i] = idx
 			}
-
-			iA, iB = ia, ib
 		} else {
 			hdr, err := cr.Read()
 			if err == io.EOF {
@@ -101,9 +108,17 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 				continue
 			}
 
-			iB, err = resolveHeaderIndex(hdr, o.ColB)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[WARN] %s: %v\n", path, err)
+			skip := false
+			for i, col := range o.TargetCols {
+				idx, err := resolveHeaderIndex(hdr, col)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[WARN] %s: %v\n", path, err)
+					skip = true
+					break
+				}
+				targetIdxs[i] = idx
+			}
+			if skip {
 				rc.Close()
 				continue
 			}
@@ -125,32 +140,63 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 			}
 			res.RowsSeen++
 
-			if iA >= len(rec) || iB >= len(rec) {
+			// Check if any index is out of bounds
+			if iA >= len(rec) {
+				line++
+				continue
+			}
+			outOfBounds := false
+			for _, idx := range targetIdxs {
+				if idx >= len(rec) {
+					outOfBounds = true
+					break
+				}
+			}
+			if outOfBounds {
 				line++
 				continue
 			}
 
-			rawA, rawB := strings.TrimSpace(rec[iA]), strings.TrimSpace(rec[iB])
-			a, b := rawA, rawB
-
+			rawA := strings.TrimSpace(rec[iA])
+			a := rawA
 			if o.IgnoreCase {
 				a = strings.ToLower(a)
-				b = strings.ToLower(b)
 			}
 
-			if !o.AllowEmpty && (a == "" || b == "") {
+			// Collect target values and check for match
+			rawTargets := make([]string, len(targetIdxs))
+			matched := false
+			allTargetsEmpty := true
+
+			for i, idx := range targetIdxs {
+				rawTargets[i] = strings.TrimSpace(rec[idx])
+				if rawTargets[i] != "" {
+					allTargetsEmpty = false
+				}
+
+				target := rawTargets[i]
+				if o.IgnoreCase {
+					target = strings.ToLower(target)
+				}
+				if a == target {
+					matched = true
+				}
+			}
+
+			// Skip if A is empty or all targets are empty (unless AllowEmpty)
+			if !o.AllowEmpty && (a == "" || allTargetsEmpty) {
 				line++
 				continue
 			}
 
-			if a != b {
+			if !matched {
 				res.Mismatches++
 				if !o.Quiet {
 					mismatches = append(mismatches, mismatch{
-						file: filepathBase(path),
-						line: line,
-						valA: rawA,
-						valB: rawB,
+						file:       filepathBase(path),
+						line:       line,
+						valA:       rawA,
+						targetVals: rawTargets,
 					})
 				}
 			}
@@ -182,35 +228,62 @@ func outputMismatches(mismatches []mismatch, o CompareOpts) error {
 	case OutputCSV:
 		return outputCSV(mismatches, o)
 	default: // OutputLines
-		return outputLines(mismatches)
+		return outputLines(mismatches, o)
 	}
 }
 
 // outputLines prints the default verbose format
-func outputLines(mismatches []mismatch) error {
+func outputLines(mismatches []mismatch, o CompareOpts) error {
 	for _, m := range mismatches {
-		fmt.Printf("%s line %d\n  A: %s\n  B: %s\n", m.file, m.line, m.valA, m.valB)
+		fmt.Printf("%s line %d\n  %s: %s\n", m.file, m.line, o.ColA, m.valA)
+		for i, col := range o.TargetCols {
+			fmt.Printf("  %s: %s\n", col, m.targetVals[i])
+		}
 	}
 	return nil
 }
 
 // outputTable prints a side-by-side table without file/line info
 func outputTable(mismatches []mismatch, o CompareOpts) error {
-	// Find max width for column A
-	maxA := len(o.ColA)
+	// Find max width for each column
+	maxWidths := make([]int, 1+len(o.TargetCols))
+	maxWidths[0] = len(o.ColA)
+	for i, col := range o.TargetCols {
+		maxWidths[i+1] = len(col)
+	}
+
 	for _, m := range mismatches {
-		if len(m.valA) > maxA {
-			maxA = len(m.valA)
+		if len(m.valA) > maxWidths[0] {
+			maxWidths[0] = len(m.valA)
+		}
+		for i, val := range m.targetVals {
+			if len(val) > maxWidths[i+1] {
+				maxWidths[i+1] = len(val)
+			}
 		}
 	}
 
 	// Print header
-	fmt.Printf("%-*s | %s\n", maxA, o.ColA, o.ColB)
-	fmt.Printf("%s-+-%s\n", strings.Repeat("-", maxA), strings.Repeat("-", maxA))
+	fmt.Printf("%-*s", maxWidths[0], o.ColA)
+	for i, col := range o.TargetCols {
+		fmt.Printf(" | %-*s", maxWidths[i+1], col)
+	}
+	fmt.Println()
+
+	// Print separator
+	fmt.Print(strings.Repeat("-", maxWidths[0]))
+	for i := range o.TargetCols {
+		fmt.Printf("-+-%s", strings.Repeat("-", maxWidths[i+1]))
+	}
+	fmt.Println()
 
 	// Print rows
 	for _, m := range mismatches {
-		fmt.Printf("%-*s | %s\n", maxA, m.valA, m.valB)
+		fmt.Printf("%-*s", maxWidths[0], m.valA)
+		for i, val := range m.targetVals {
+			fmt.Printf(" | %-*s", maxWidths[i+1], val)
+		}
+		fmt.Println()
 	}
 	return nil
 }
@@ -226,14 +299,22 @@ func outputCSV(mismatches []mismatch, o CompareOpts) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	// Write header
-	if err := w.Write([]string{o.ColA, o.ColB, "file", "line"}); err != nil {
+	// Write header: ColA, target cols..., file, line
+	header := make([]string, 0, 2+len(o.TargetCols)+2)
+	header = append(header, o.ColA)
+	header = append(header, o.TargetCols...)
+	header = append(header, "file", "line")
+	if err := w.Write(header); err != nil {
 		return err
 	}
 
 	// Write rows
 	for _, m := range mismatches {
-		if err := w.Write([]string{m.valA, m.valB, m.file, strconv.Itoa(m.line)}); err != nil {
+		row := make([]string, 0, 2+len(m.targetVals)+2)
+		row = append(row, m.valA)
+		row = append(row, m.targetVals...)
+		row = append(row, m.file, strconv.Itoa(m.line))
+		if err := w.Write(row); err != nil {
 			return err
 		}
 	}

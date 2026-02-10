@@ -76,9 +76,9 @@ func TestCompareColumns(t *testing.T) {
 			name:  "matching columns",
 			files: []string{testdataPath("compare.csv")},
 			opts: CompareOpts{
-				ColA:   "ColA",
-				ColB:   "ColB",
-				Config: cfg,
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Config:     cfg,
 			},
 			wantMismatches: 2, // cherry/Cherry and date/fig
 		},
@@ -87,7 +87,7 @@ func TestCompareColumns(t *testing.T) {
 			files: []string{testdataPath("compare.csv")},
 			opts: CompareOpts{
 				ColA:       "ColA",
-				ColB:       "ColB",
+				TargetCols: []string{"ColB"},
 				IgnoreCase: true,
 				Config:     cfg,
 			},
@@ -97,17 +97,37 @@ func TestCompareColumns(t *testing.T) {
 			name:  "identical columns",
 			files: []string{testdataPath("compare.csv")},
 			opts: CompareOpts{
-				ColA:   "ColA",
-				ColB:   "ColA",
-				Config: cfg,
+				ColA:       "ColA",
+				TargetCols: []string{"ColA"},
+				Config:     cfg,
 			},
 			wantMismatches: 0,
 		},
 		{
 			name:    "no files",
 			files:   []string{},
-			opts:    CompareOpts{ColA: "A", ColB: "B", Config: cfg},
+			opts:    CompareOpts{ColA: "A", TargetCols: []string{"B"}, Config: cfg},
 			wantErr: true,
+		},
+		{
+			name:  "multiple targets OR logic",
+			files: []string{testdataPath("compare.csv")},
+			opts: CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB", "ColC"},
+				Config:     cfg,
+			},
+			wantMismatches: 0, // cherry matches ColC, date matches ColC
+		},
+		{
+			name:  "multiple targets with one mismatch",
+			files: []string{testdataPath("compare.csv")},
+			opts: CompareOpts{
+				ColA:       "ColC",
+				TargetCols: []string{"ColA", "ColB"},
+				Config:     cfg,
+			},
+			wantMismatches: 1, // APPLE doesn't match apple (case sensitive)
 		},
 	}
 
@@ -983,7 +1003,7 @@ func TestCompareColumnsEdgeCases(t *testing.T) {
 			var err error
 			res, err = CompareColumns([]string{testdataPath("empty_cells.csv")}, CompareOpts{
 				ColA:       "Value",
-				ColB:       "Extra",
+				TargetCols: []string{"Extra"},
 				AllowEmpty: true,
 				Quiet:      true,
 				Config:     cfg,
@@ -1007,10 +1027,10 @@ func TestCompareColumnsEdgeCases(t *testing.T) {
 		captureStderr(func() {
 			var err error
 			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-				ColA:   "0",
-				ColB:   "1",
-				Quiet:  true,
-				Config: cfg,
+				ColA:       "0",
+				TargetCols: []string{"1"},
+				Quiet:      true,
+				Config:     cfg,
 			})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -1030,10 +1050,10 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 		captureStderr(func() {
 			output = captureStdout(func() {
 				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-					ColA:   "ColA",
-					ColB:   "ColB",
-					Format: OutputLines,
-					Config: cfg,
+					ColA:       "ColA",
+					TargetCols: []string{"ColB"},
+					Format:     OutputLines,
+					Config:     cfg,
 				})
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
@@ -1043,8 +1063,8 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 		if !strings.Contains(output, "compare.csv line") {
 			t.Errorf("expected file and line in output, got: %s", output)
 		}
-		if !strings.Contains(output, "A:") || !strings.Contains(output, "B:") {
-			t.Errorf("expected A: and B: labels in output, got: %s", output)
+		if !strings.Contains(output, "ColA:") || !strings.Contains(output, "ColB:") {
+			t.Errorf("expected ColA: and ColB: labels in output, got: %s", output)
 		}
 	})
 
@@ -1053,10 +1073,10 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 		captureStderr(func() {
 			output = captureStdout(func() {
 				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-					ColA:   "ColA",
-					ColB:   "ColB",
-					Format: OutputTable,
-					Config: cfg,
+					ColA:       "ColA",
+					TargetCols: []string{"ColB"},
+					Format:     OutputTable,
+					Config:     cfg,
 				})
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
@@ -1083,11 +1103,11 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 
 		captureStderr(func() {
 			_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-				ColA:    "ColA",
-				ColB:    "ColB",
-				Format:  OutputCSV,
-				CSVPath: csvPath,
-				Config:  cfg,
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Format:     OutputCSV,
+				CSVPath:    csvPath,
+				Config:     cfg,
 			})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -1116,11 +1136,11 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 
 		captureStderr(func() {
 			_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-				ColA:    "ColA",
-				ColB:    "ColA",
-				Format:  OutputCSV,
-				CSVPath: csvPath,
-				Config:  cfg,
+				ColA:       "ColA",
+				TargetCols: []string{"ColA"},
+				Format:     OutputCSV,
+				CSVPath:    csvPath,
+				Config:     cfg,
 			})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -1137,10 +1157,10 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 		captureStderr(func() {
 			output = captureStdout(func() {
 				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
-					ColA:   "ColA",
-					ColB:   "ColA",
-					Format: OutputTable,
-					Config: cfg,
+					ColA:       "ColA",
+					TargetCols: []string{"ColA"},
+					Format:     OutputTable,
+					Config:     cfg,
 				})
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
@@ -1149,6 +1169,27 @@ func TestCompareColumnsOutputFormats(t *testing.T) {
 		})
 		if output != "" {
 			t.Errorf("expected empty output when no mismatches, got: %s", output)
+		}
+	})
+
+	t.Run("table format multiple targets", func(t *testing.T) {
+		var output string
+		captureStderr(func() {
+			output = captureStdout(func() {
+				_, err := CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+					ColA:       "ColC",
+					TargetCols: []string{"ColA", "ColB"},
+					Format:     OutputTable,
+					Config:     cfg,
+				})
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			})
+		})
+		// Should show all three column headers
+		if !strings.Contains(output, "ColC") || !strings.Contains(output, "ColA") || !strings.Contains(output, "ColB") {
+			t.Errorf("expected all column headers in output, got: %s", output)
 		}
 	})
 }

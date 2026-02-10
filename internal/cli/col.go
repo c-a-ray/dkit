@@ -30,12 +30,20 @@ func newColCmpCmd(cfg *core.Config) *cobra.Command {
 	var toFlag string
 
 	cmd := &cobra.Command{
-		Use:   "cmp <A> <B> [files...]",
-		Short: "Compare two columns",
-		Args:  cobra.MinimumNArgs(2),
+		Use:   "cmp <A> <B[,C,...]> [files...]",
+		Short: "Compare column A against one or more target columns (OR logic)",
+		Long: `Compare column A against one or more target columns.
+
+A row is a match if A equals ANY of the target columns (OR logic).
+Use comma-separated column names to specify multiple targets.
+
+Examples:
+  dkit col cmp ID ID2 *.csv           # A must equal B
+  dkit col cmp Name First,Last *.csv  # Name must equal First OR Last`,
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			A := args[0]
-			B := args[1]
+			targets := splitComma(args[1])
 
 			files := args[2:]
 			if len(files) == 0 {
@@ -69,7 +77,7 @@ func newColCmpCmd(cfg *core.Config) *cobra.Command {
 
 			res, err := ops.CompareColumns(list, ops.CompareOpts{
 				ColA:       A,
-				ColB:       B,
+				TargetCols: targets,
 				IgnoreCase: ignoreCase,
 				AllowEmpty: allowEmpty,
 				Quiet:      cfg.Quiet,
