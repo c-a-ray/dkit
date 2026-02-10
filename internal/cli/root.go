@@ -25,6 +25,7 @@ func NewRootCmd(cfg *core.Config) *cobra.Command {
 	addFilesCmd(rootCmd, cfg)
 	addFmtCmd(rootCmd, cfg)
 	addCmpCmd(rootCmd, cfg)
+	addNPICmd(rootCmd, cfg)
 
 	return rootCmd
 }
