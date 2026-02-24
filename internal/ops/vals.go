@@ -64,7 +64,7 @@ func ColumnValues(files []string, o ValsOpts) error {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config)
+		cr := core.NewRecordReader(r, o.Config)
 
 		var idx int
 		var hdr []string

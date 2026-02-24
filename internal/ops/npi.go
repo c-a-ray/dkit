@@ -228,7 +228,7 @@ func NPIColValidate(files []string, o NPIColOpts) (int, error) {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config)
+		cr := core.NewRecordReader(r, o.Config)
 
 		var idx int
 		if o.Config.NoHeader {

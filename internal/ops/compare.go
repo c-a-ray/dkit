@@ -70,7 +70,7 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 		}
 
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config)
+		cr := core.NewRecordReader(r, o.Config)
 		var iA int
 		targetIdxs := make([]int, len(o.TargetCols))
 

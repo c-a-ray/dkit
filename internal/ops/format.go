@@ -131,7 +131,7 @@ func writeFile(inPath string, w io.Writer, opts FmtOpts) error {
 	defer rc.Close()
 
 	sr := core.SkipLines(rc, opts.Config.SkipStart, opts.Config.SkipEnd)
-	r := core.NewCSVReader(sr, opts.Config)
+	r := core.NewRecordReader(sr, opts.Config)
 	out := csv.NewWriter(w)
 	out.Comma = opts.OutDelim
 

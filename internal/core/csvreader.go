@@ -72,6 +72,11 @@ func SkipLines(r io.Reader, start, end int) io.Reader {
 	return bytes.NewReader(bytes.Join(lines, nil))
 }
 
+// RecordReader is the interface for reading tabular records (CSV or fixed-width)
+type RecordReader interface {
+	Read() ([]string, error)
+}
+
 // NewCSVReader returns a csv.Reader configured from the given Config
 func NewCSVReader(r io.Reader, cfg *Config) *csv.Reader {
 	cr := csv.NewReader(r)
@@ -80,4 +85,60 @@ func NewCSVReader(r io.Reader, cfg *Config) *csv.Reader {
 	cr.FieldsPerRecord = cfg.FieldsPerRecord
 	cr.ReuseRecord = true
 	return cr
+}
+
+// NewRecordReader returns a RecordReader appropriate for the config.
+// If FixedColumns is defined, returns a FixedWidthReader that emits
+// column names as a synthetic header row followed by extracted values.
+// Otherwise returns a standard CSV reader.
+func NewRecordReader(r io.Reader, cfg *Config) RecordReader {
+	if len(cfg.FixedColumns) > 0 {
+		return newFixedWidthReader(r, cfg.FixedColumns)
+	}
+	return NewCSVReader(r, cfg)
+}
+
+// FixedWidthReader reads fixed-width lines and extracts named columns.
+// The first Read() returns column names as a synthetic header row.
+type FixedWidthReader struct {
+	scanner    *bufio.Scanner
+	columns    []FixedColumnDef
+	headerSent bool
+}
+
+func newFixedWidthReader(r io.Reader, columns []FixedColumnDef) *FixedWidthReader {
+	return &FixedWidthReader{
+		scanner: bufio.NewScanner(r),
+		columns: columns,
+	}
+}
+
+func (fw *FixedWidthReader) Read() ([]string, error) {
+	if !fw.headerSent {
+		fw.headerSent = true
+		hdr := make([]string, len(fw.columns))
+		for i, col := range fw.columns {
+			hdr[i] = col.Name
+		}
+		return hdr, nil
+	}
+
+	if !fw.scanner.Scan() {
+		if err := fw.scanner.Err(); err != nil {
+			return nil, err
+		}
+		return nil, io.EOF
+	}
+
+	line := fw.scanner.Text()
+	rec := make([]string, len(fw.columns))
+	for i, col := range fw.columns {
+		if col.Start >= len(line) {
+			rec[i] = ""
+			continue
+		}
+		end := min(col.End, len(line))
+		rec[i] = strings.TrimSpace(line[col.Start:end])
+	}
+	return rec, nil
 }
