@@ -471,89 +471,183 @@ func TestCombinedFeatures(t *testing.T) {
 	})
 }
 
-// TestConfigFileIntegration tests the config file loading pipeline
-func TestConfigFileIntegration(t *testing.T) {
-	t.Run("dotfile write and load round-trip", func(t *testing.T) {
-		dir := t.TempDir()
-		cfgPath := "/some/path/dkit.yaml"
+// TestGlobalConfigIntegration tests the global config state management
+func TestGlobalConfigIntegration(t *testing.T) {
+	// Redirect global config to temp dir for all subtests
+	tmpDir := t.TempDir()
+	core.SetConfigDirForTest(tmpDir)
+	defer core.SetConfigDirForTest("")
 
-		err := core.WriteDotfile(dir, cfgPath)
-		if err != nil {
-			t.Fatalf("write dotfile: %v", err)
-		}
-
-		got, err := core.LoadDotfile(dir)
-		if err != nil {
-			t.Fatalf("load dotfile: %v", err)
-		}
-		if got != cfgPath {
-			t.Errorf("got %q, want %q", got, cfgPath)
-		}
-	})
-
-	t.Run("dotfile with relative path", func(t *testing.T) {
-		dir := t.TempDir()
-
-		err := core.WriteDotfile(dir, "./dkit.yaml")
-		if err != nil {
-			t.Fatalf("write dotfile: %v", err)
-		}
-
-		got, err := core.LoadDotfile(dir)
-		if err != nil {
-			t.Fatalf("load dotfile: %v", err)
-		}
-		// Should be resolved to absolute
-		if !strings.HasSuffix(got, "dkit.yaml") {
-			t.Errorf("expected path ending in dkit.yaml, got %q", got)
-		}
-		if strings.HasPrefix(got, "./") {
-			t.Errorf("expected resolved path, got relative %q", got)
-		}
-	})
-
-	t.Run("dotfile not found returns empty", func(t *testing.T) {
-		dir := t.TempDir()
-
-		got, err := core.LoadDotfile(dir)
+	t.Run("empty state returns no active config", func(t *testing.T) {
+		path, err := core.GetActiveConfig()
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got != "" {
-			t.Errorf("expected empty string, got %q", got)
+		if path != "" {
+			t.Errorf("expected empty path, got %q", path)
 		}
 	})
 
-	t.Run("remove dotfile", func(t *testing.T) {
-		dir := t.TempDir()
+	// Create a config file for subsequent tests
+	cfgDir := t.TempDir()
+	cfgFile := filepath.Join(cfgDir, "myproject.yaml")
+	if err := os.WriteFile(cfgFile, []byte("name: myproject\ndelimiter: pipe\n"), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
 
-		err := core.WriteDotfile(dir, "/some/config.yaml")
+	t.Run("register config", func(t *testing.T) {
+		name, err := core.RegisterConfig(cfgFile)
 		if err != nil {
+			t.Fatalf("register: %v", err)
+		}
+		if name != "myproject" {
+			t.Errorf("name = %q, want myproject", name)
+		}
+	})
+
+	t.Run("register config without name errors", func(t *testing.T) {
+		dir := t.TempDir()
+		noNameFile := filepath.Join(dir, "noname.yaml")
+		if err := os.WriteFile(noNameFile, []byte("delimiter: pipe\n"), 0o644); err != nil {
 			t.Fatalf("write: %v", err)
 		}
-
-		err = core.RemoveDotfile(dir)
-		if err != nil {
-			t.Fatalf("remove: %v", err)
-		}
-
-		got, err := core.LoadDotfile(dir)
-		if err != nil {
-			t.Fatalf("load after remove: %v", err)
-		}
-		if got != "" {
-			t.Errorf("expected empty after remove, got %q", got)
+		_, err := core.RegisterConfig(noNameFile)
+		if err == nil {
+			t.Error("expected error for config without name")
 		}
 	})
 
-	t.Run("remove nonexistent dotfile is no-op", func(t *testing.T) {
+	t.Run("set active by name", func(t *testing.T) {
+		if err := core.SetActiveConfigByName("myproject"); err != nil {
+			t.Fatalf("set active: %v", err)
+		}
+		path, err := core.GetActiveConfig()
+		if err != nil {
+			t.Fatalf("get active: %v", err)
+		}
+		if path == "" {
+			t.Error("expected non-empty active path")
+		}
+	})
+
+	t.Run("set active by path", func(t *testing.T) {
+		if err := core.SetActiveConfig(cfgFile); err != nil {
+			t.Fatalf("set active: %v", err)
+		}
+		path, err := core.GetActiveConfig()
+		if err != nil {
+			t.Fatalf("get active: %v", err)
+		}
+		if path == "" {
+			t.Error("expected non-empty active path")
+		}
+	})
+
+	t.Run("list configs marks active", func(t *testing.T) {
+		gs, err := core.ListConfigs()
+		if err != nil {
+			t.Fatalf("list: %v", err)
+		}
+		if len(gs.Configs) == 0 {
+			t.Error("expected at least one config")
+		}
+		if _, ok := gs.Configs["myproject"]; !ok {
+			t.Error("expected myproject in configs")
+		}
+		if gs.Active == "" {
+			t.Error("expected active config to be set")
+		}
+	})
+
+	t.Run("reset clears active", func(t *testing.T) {
+		if err := core.ResetActiveConfig(); err != nil {
+			t.Fatalf("reset: %v", err)
+		}
+		path, err := core.GetActiveConfig()
+		if err != nil {
+			t.Fatalf("get active: %v", err)
+		}
+		if path != "" {
+			t.Errorf("expected empty after reset, got %q", path)
+		}
+	})
+
+	t.Run("unregister config", func(t *testing.T) {
+		if err := core.UnregisterConfig("myproject"); err != nil {
+			t.Fatalf("unregister: %v", err)
+		}
+		gs, err := core.ListConfigs()
+		if err != nil {
+			t.Fatalf("list: %v", err)
+		}
+		if _, ok := gs.Configs["myproject"]; ok {
+			t.Error("myproject should have been unregistered")
+		}
+	})
+
+	t.Run("unregister nonexistent config errors", func(t *testing.T) {
+		err := core.UnregisterConfig("nonexistent")
+		if err == nil {
+			t.Error("expected error for nonexistent config")
+		}
+	})
+
+	t.Run("unregister active config clears active", func(t *testing.T) {
 		dir := t.TempDir()
-		err := core.RemoveDotfile(dir)
+		tmpCfg := filepath.Join(dir, "temp.yaml")
+		if err := os.WriteFile(tmpCfg, []byte("name: temp\n"), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		if _, err := core.RegisterConfig(tmpCfg); err != nil {
+			t.Fatalf("register: %v", err)
+		}
+		if err := core.SetActiveConfigByName("temp"); err != nil {
+			t.Fatalf("set active: %v", err)
+		}
+
+		if err := core.UnregisterConfig("temp"); err != nil {
+			t.Fatalf("unregister: %v", err)
+		}
+		path, err := core.GetActiveConfig()
 		if err != nil {
-			t.Errorf("expected no error, got: %v", err)
+			t.Fatalf("get active: %v", err)
+		}
+		if path != "" {
+			t.Errorf("active should be cleared after unregistering active config, got %q", path)
 		}
 	})
 
+	t.Run("save and load file config round-trip", func(t *testing.T) {
+		dir := t.TempDir()
+		rtFile := filepath.Join(dir, "roundtrip.yaml")
+
+		fc := &core.FileConfig{
+			Name:      "roundtrip",
+			Delimiter: "pipe",
+			Files:     []string{"*.csv"},
+		}
+		if err := core.SaveFileConfig(rtFile, fc); err != nil {
+			t.Fatalf("save: %v", err)
+		}
+
+		loaded, err := core.LoadFileConfig(rtFile)
+		if err != nil {
+			t.Fatalf("load: %v", err)
+		}
+		if loaded.Name != "roundtrip" {
+			t.Errorf("Name = %q, want roundtrip", loaded.Name)
+		}
+		if loaded.Delimiter != "pipe" {
+			t.Errorf("Delimiter = %q, want pipe", loaded.Delimiter)
+		}
+		if len(loaded.Files) != 1 || loaded.Files[0] != "*.csv" {
+			t.Errorf("Files = %v, want [*.csv]", loaded.Files)
+		}
+	})
+}
+
+// TestConfigFileIntegration tests the config file loading pipeline
+func TestConfigFileIntegration(t *testing.T) {
 	t.Run("load and apply full config", func(t *testing.T) {
 		dir := t.TempDir()
 

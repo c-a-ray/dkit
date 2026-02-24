@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/c-a-ray/dkit/internal/core"
 	"github.com/spf13/cobra"
@@ -14,12 +13,8 @@ func NewRootCmd(cfg *core.Config) *cobra.Command {
 		Use:   "dkit",
 		Short: "A toolkit for exploring tabular data",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Load config file if .dkit exists in CWD
-			wd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			cfgPath, err := core.LoadDotfile(wd)
+			// Load active config from global state
+			cfgPath, err := core.GetActiveConfig()
 			if err != nil {
 				return err
 			}

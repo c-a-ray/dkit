@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-// DotfileName is the name of the pointer file placed in the working directory
-const DotfileName = ".dkit"
+// configDirOverride allows tests to redirect the global config directory.
+// When empty, os.UserConfigDir() is used.
+var configDirOverride string
+
+// SetConfigDirForTest overrides the config directory for testing.
+// Pass "" to restore default behavior.
+func SetConfigDirForTest(dir string) {
+	configDirOverride = dir
+}
 
 // FileConfig represents the contents of a dkit YAML configuration file
 type FileConfig struct {
+	Name            string           `yaml:"name,omitempty"`
 	Files           []string         `yaml:"files,omitempty"`
 	Delimiter       string           `yaml:"delimiter,omitempty"`
 	Encoding        string           `yaml:"encoding,omitempty"`
@@ -33,41 +40,171 @@ type FixedColumnDef struct {
 	End   int    `yaml:"end"`
 }
 
-// LoadDotfile reads the .dkit file from the given directory and returns the
-// path to the YAML config it references. Returns ("", nil) if no .dkit exists.
-func LoadDotfile(dir string) (string, error) {
-	dotpath := filepath.Join(dir, DotfileName)
-	data, err := os.ReadFile(dotpath)
+// GlobalState represents the contents of ~/.config/dkit/global.yaml
+type GlobalState struct {
+	Active  string            `yaml:"active,omitempty"`
+	Configs map[string]string `yaml:"configs,omitempty"`
+}
+
+// GlobalConfigDir returns the path to the dkit config directory, creating it if needed.
+func GlobalConfigDir() (string, error) {
+	var base string
+	if configDirOverride != "" {
+		base = configDirOverride
+	} else {
+		var err error
+		base, err = os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("cannot determine config directory: %w", err)
+		}
+	}
+	dir := filepath.Join(base, "dkit")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("creating config directory: %w", err)
+	}
+	return dir, nil
+}
+
+func globalStatePath() (string, error) {
+	dir, err := GlobalConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "global.yaml"), nil
+}
+
+// LoadGlobalState reads and parses the global state file.
+// Returns a zero-value GlobalState if the file does not exist.
+func LoadGlobalState() (*GlobalState, error) {
+	p, err := globalStatePath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(p)
 	if os.IsNotExist(err) {
-		return "", nil
+		return &GlobalState{Configs: make(map[string]string)}, nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("reading %s: %w", dotpath, err)
+		return nil, fmt.Errorf("reading global state: %w", err)
 	}
-	cfgPath := strings.TrimSpace(string(data))
-	if cfgPath == "" {
-		return "", fmt.Errorf("%s is empty", dotpath)
+	var gs GlobalState
+	if err := yaml.Unmarshal(data, &gs); err != nil {
+		return nil, fmt.Errorf("parsing global state: %w", err)
 	}
-	if !filepath.IsAbs(cfgPath) {
-		cfgPath = filepath.Join(dir, cfgPath)
+	if gs.Configs == nil {
+		gs.Configs = make(map[string]string)
 	}
-	return cfgPath, nil
+	return &gs, nil
 }
 
-// WriteDotfile writes the config file path to .dkit in the given directory
-func WriteDotfile(dir, cfgPath string) error {
-	dotpath := filepath.Join(dir, DotfileName)
-	return os.WriteFile(dotpath, []byte(cfgPath+"\n"), 0o644)
+// SaveGlobalState writes the GlobalState to the global state file.
+func SaveGlobalState(gs *GlobalState) error {
+	p, err := globalStatePath()
+	if err != nil {
+		return err
+	}
+	data, err := yaml.Marshal(gs)
+	if err != nil {
+		return fmt.Errorf("marshaling global state: %w", err)
+	}
+	return os.WriteFile(p, data, 0o644)
 }
 
-// RemoveDotfile removes the .dkit file from the given directory
-func RemoveDotfile(dir string) error {
-	dotpath := filepath.Join(dir, DotfileName)
-	err := os.Remove(dotpath)
-	if os.IsNotExist(err) {
-		return nil
+// GetActiveConfig returns the path of the currently active config,
+// or ("", nil) if none is set.
+func GetActiveConfig() (string, error) {
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return "", err
 	}
-	return err
+	return gs.Active, nil
+}
+
+// SetActiveConfig sets the active config pointer in global state.
+// The path must point to an existing, readable YAML config file.
+func SetActiveConfig(path string) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if _, err := LoadFileConfig(abs); err != nil {
+		return fmt.Errorf("cannot use config: %w", err)
+	}
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return err
+	}
+	gs.Active = abs
+	return SaveGlobalState(gs)
+}
+
+// SetActiveConfigByName sets the active config by registered name.
+func SetActiveConfigByName(name string) error {
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return err
+	}
+	path, ok := gs.Configs[name]
+	if !ok {
+		return fmt.Errorf("no config registered with name %q", name)
+	}
+	gs.Active = path
+	return SaveGlobalState(gs)
+}
+
+// ResetActiveConfig clears the active config pointer.
+func ResetActiveConfig() error {
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return err
+	}
+	gs.Active = ""
+	return SaveGlobalState(gs)
+}
+
+// RegisterConfig adds a name->path mapping to the global registry.
+// It reads the name from the config file's name field.
+func RegisterConfig(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	fc, err := LoadFileConfig(abs)
+	if err != nil {
+		return "", err
+	}
+	if fc.Name == "" {
+		return "", fmt.Errorf("config file %s has no 'name' field", abs)
+	}
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return "", err
+	}
+	gs.Configs[fc.Name] = abs
+	return fc.Name, SaveGlobalState(gs)
+}
+
+// UnregisterConfig removes a name from the global registry.
+// If the config was active, the active pointer is also cleared.
+func UnregisterConfig(name string) error {
+	gs, err := LoadGlobalState()
+	if err != nil {
+		return err
+	}
+	path, ok := gs.Configs[name]
+	if !ok {
+		return fmt.Errorf("no config registered with name %q", name)
+	}
+	delete(gs.Configs, name)
+	if gs.Active == path {
+		gs.Active = ""
+	}
+	return SaveGlobalState(gs)
+}
+
+// ListConfigs returns the global state for display purposes.
+func ListConfigs() (*GlobalState, error) {
+	return LoadGlobalState()
 }
 
 // LoadFileConfig reads and parses a YAML config file at the given path
@@ -81,6 +218,15 @@ func LoadFileConfig(path string) (*FileConfig, error) {
 		return nil, fmt.Errorf("parsing config %s: %w", path, err)
 	}
 	return &fc, nil
+}
+
+// SaveFileConfig writes a FileConfig to the given path as YAML.
+func SaveFileConfig(path string, fc *FileConfig) error {
+	data, err := yaml.Marshal(fc)
+	if err != nil {
+		return fmt.Errorf("marshaling config: %w", err)
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 // ApplyTo sets values on the Config for any fields that are present in the

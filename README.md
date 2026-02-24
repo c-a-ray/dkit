@@ -256,26 +256,59 @@ dkit col vals freq Name --when "City=NYC|City=LA" --when "Status=active" *.csv
 
 ## Config File
 
-Instead of passing the same flags every time, create a YAML config file for your project directory.
+Instead of passing the same flags every time, create a YAML config file for your project. Config state is stored globally at `~/.config/dkit/`, so the active config persists across directories.
 
-### Setup
+### Managing configs
 
 ```bash
-# Point current directory at a config file
-dkit config set ./dkit.yaml
+# Create a new config interactively
+dkit config create
+
+# Or register an existing config file
+dkit config register ./myproject.yaml
+
+# Set the active config (by registered name or file path)
+dkit config set myproject
+dkit config set /path/to/myproject.yaml
 
 # Show active config
-dkit config show
+dkit config get
 
-# Remove config from current directory
+# Show active config options
+dkit config get options
+
+# List all registered configs
+dkit config list
+
+# Clear the active config
 dkit config reset
+
+# Remove a config from the registry
+dkit config unregister myproject
 ```
 
-`config set` creates a `.dkit` dotfile in the current directory containing the path to your YAML config. All subsequent dkit commands in that directory will load the config automatically.
+### Modifying config options via CLI
+
+```bash
+# Set a scalar option
+dkit config set delimiter pipe
+dkit config set fieldsPerRecord variable
+dkit config set skipStart 1
+
+# Add file patterns
+dkit config set files add "data/*.csv" "reports/*.txt"
+
+# Add fixed-width column definitions
+dkit config set fixedColumns add FirstName --start 0 --end 10
+dkit config set fixedColumns add LastName --start 10 --end 20
+```
 
 ### Config format
 
 ```yaml
+# Project name — required for registration
+name: myproject
+
 # File globs — used when no files are passed on the command line
 files:
   - data/*.csv
@@ -436,7 +469,8 @@ dkit npi lookup --firstName John --lastName Smith --state NY
 ### Project config for repeated use
 
 ```yaml
-# dkit.yaml
+# myproject.yaml
+name: myproject
 files:
   - reports/*.txt
 delimiter: pipe
@@ -445,7 +479,8 @@ skipEnd: 1
 ```
 
 ```bash
-dkit config set dkit.yaml
+dkit config register myproject.yaml
+dkit config set myproject
 dkit col list                    # uses config for files, delimiter, skip
 dkit col vals freq Status        # same — no flags needed
 dkit config reset                # done with this project
