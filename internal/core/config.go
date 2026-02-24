@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/pflag"
 )
@@ -12,9 +13,10 @@ type Config struct {
 	Encoding   string
 	NoHeader   bool
 	Quiet      bool
-	LazyQuotes bool
-	SkipStart  int
-	SkipEnd    int
+	LazyQuotes     bool
+	SkipStart      int
+	SkipEnd        int
+	FieldsPerRecord int
 }
 
 // NewConfig returns a Config initialized with default values
@@ -47,7 +49,7 @@ func (c *Config) FromFlags(fs *pflag.FlagSet) error {
 	}
 	c.Encoding = enc
 
-	nh, err := fs.GetBool("no-header")
+	nh, err := fs.GetBool("noHeader")
 	if err != nil {
 		return err
 	}
@@ -59,25 +61,48 @@ func (c *Config) FromFlags(fs *pflag.FlagSet) error {
 	}
 	c.Quiet = q
 
-	lq, err := fs.GetBool("lazy-quotes")
+	lq, err := fs.GetBool("lazyQuotes")
 	if err != nil {
 		return err
 	}
 	c.LazyQuotes = lq
 
-	ss, err := fs.GetInt("skip-start")
+	ss, err := fs.GetInt("skipStart")
 	if err != nil {
 		return err
 	}
 	c.SkipStart = ss
 
-	se, err := fs.GetInt("skip-end")
+	se, err := fs.GetInt("skipEnd")
 	if err != nil {
 		return err
 	}
 	c.SkipEnd = se
 
+	fpr, err := fs.GetString("fieldsPerRecord")
+	if err != nil {
+		return err
+	}
+	c.FieldsPerRecord, err = parseFieldsPerRecord(fpr)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func parseFieldsPerRecord(s string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	if s == "variable" {
+		return -1, nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("--fieldsPerRecord must be \"variable\" or an integer, got %q", s)
+	}
+	return n, nil
 }
 
 func ParseDelim(d string) (rune, error) {

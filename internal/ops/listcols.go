@@ -33,7 +33,7 @@ func ListColumns(files []string, o ListColsOpts) error {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 
 		hdr, err := cr.Read()
 		if err == io.EOF {

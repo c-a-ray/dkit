@@ -70,7 +70,7 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 		}
 
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 		var iA int
 		targetIdxs := make([]int, len(o.TargetCols))
 
@@ -78,7 +78,7 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 			ia, err := parseIndex(o.ColA)
 			if err != nil {
 				rc.Close()
-				return res, fmt.Errorf("--no-header: col A must be index: %w", err)
+				return res, fmt.Errorf("--noHeader: col A must be index: %w", err)
 			}
 			iA = ia
 
@@ -86,7 +86,7 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 				idx, err := parseIndex(col)
 				if err != nil {
 					rc.Close()
-					return res, fmt.Errorf("--no-header: target col %q must be index: %w", col, err)
+					return res, fmt.Errorf("--noHeader: target col %q must be index: %w", col, err)
 				}
 				targetIdxs[i] = idx
 			}

@@ -28,23 +28,17 @@ func TestNewConfig(t *testing.T) {
 
 func TestFromFlags(t *testing.T) {
 	t.Run("parses all flags", func(t *testing.T) {
-		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
-		fs.String("delim", ",", "")
-		fs.String("encoding", "utf-8", "")
-		fs.Bool("no-header", false, "")
-		fs.Bool("quiet", false, "")
-		fs.Bool("lazy-quotes", false, "")
-		fs.Int("skip-start", 0, "")
-		fs.Int("skip-end", 0, "")
+		fs := testFlagSet()
 
 		// Set some non-default values
 		fs.Set("delim", "tab")
 		fs.Set("encoding", "latin1")
-		fs.Set("no-header", "true")
+		fs.Set("noHeader", "true")
 		fs.Set("quiet", "true")
-		fs.Set("lazy-quotes", "true")
-		fs.Set("skip-start", "2")
-		fs.Set("skip-end", "3")
+		fs.Set("lazyQuotes", "true")
+		fs.Set("skipStart", "2")
+		fs.Set("skipEnd", "3")
+		fs.Set("fieldsPerRecord", "variable")
 
 		cfg := NewConfig()
 		err := cfg.FromFlags(fs)
@@ -73,18 +67,13 @@ func TestFromFlags(t *testing.T) {
 		if cfg.SkipEnd != 3 {
 			t.Errorf("SkipEnd = %d, want 3", cfg.SkipEnd)
 		}
+		if cfg.FieldsPerRecord != -1 {
+			t.Errorf("FieldsPerRecord = %d, want -1", cfg.FieldsPerRecord)
+		}
 	})
 
 	t.Run("invalid delimiter", func(t *testing.T) {
-		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
-		fs.String("delim", ",", "")
-		fs.String("encoding", "utf-8", "")
-		fs.Bool("no-header", false, "")
-		fs.Bool("quiet", false, "")
-		fs.Bool("lazy-quotes", false, "")
-		fs.Int("skip-start", 0, "")
-		fs.Int("skip-end", 0, "")
-
+		fs := testFlagSet()
 		fs.Set("delim", "invalid-multi-char")
 
 		cfg := NewConfig()
@@ -145,4 +134,17 @@ func TestParseDelim(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testFlagSet() *pflag.FlagSet {
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.String("delim", ",", "")
+	fs.String("encoding", "utf-8", "")
+	fs.Bool("noHeader", false, "")
+	fs.Bool("quiet", false, "")
+	fs.Bool("lazyQuotes", false, "")
+	fs.Int("skipStart", 0, "")
+	fs.Int("skipEnd", 0, "")
+	fs.String("fieldsPerRecord", "", "")
+	return fs
 }

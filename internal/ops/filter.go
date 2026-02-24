@@ -134,7 +134,7 @@ func (f Filter) Resolve(header []string, noHeader bool) (ResolvedFilter, error) 
 			if noHeader {
 				idx, err = parseIndex(c.Column)
 				if err != nil {
-					return ResolvedFilter{}, fmt.Errorf("with --no-header, filter column must be numeric index: %q", c.Column)
+					return ResolvedFilter{}, fmt.Errorf("with --noHeader, filter column must be numeric index: %q", c.Column)
 				}
 			} else {
 				idx, err = resolveHeaderIndex(header, c.Column)

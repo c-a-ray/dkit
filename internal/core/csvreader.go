@@ -72,11 +72,12 @@ func SkipLines(r io.Reader, start, end int) io.Reader {
 	return bytes.NewReader(bytes.Join(lines, nil))
 }
 
-// NewCSVReader returns a csv.Reader configured with the given delimiter and options
-func NewCSVReader(r io.Reader, delim rune, lazy bool) *csv.Reader {
+// NewCSVReader returns a csv.Reader configured from the given Config
+func NewCSVReader(r io.Reader, cfg *Config) *csv.Reader {
 	cr := csv.NewReader(r)
-	cr.Comma = delim
-	cr.LazyQuotes = lazy
+	cr.Comma = cfg.Delim
+	cr.LazyQuotes = cfg.LazyQuotes
+	cr.FieldsPerRecord = cfg.FieldsPerRecord
 	cr.ReuseRecord = true
 	return cr
 }

@@ -68,7 +68,7 @@ func TestNewCSVReader(t *testing.T) {
 		}
 		defer rc.Close()
 
-		cr := NewCSVReader(rc, ',', false)
+		cr := NewCSVReader(rc, &Config{Delim: ','})
 
 		// Read header
 		hdr, err := cr.Read()
@@ -97,7 +97,7 @@ func TestNewCSVReader(t *testing.T) {
 		}
 		defer rc.Close()
 
-		cr := NewCSVReader(rc, '\t', false)
+		cr := NewCSVReader(rc, &Config{Delim: '\t'})
 
 		// Read header
 		hdr, err := cr.Read()

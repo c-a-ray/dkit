@@ -42,7 +42,7 @@ func DupKey(files []string, o DupKeyOpts) (DupKeyResult, error) {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 
 		var idxKey int
 		var idxBy []int
@@ -51,7 +51,7 @@ func DupKey(files []string, o DupKeyOpts) (DupKeyResult, error) {
 			ki, err := parseIndex(o.Key)
 			if err != nil {
 				rc.Close()
-				return res, fmt.Errorf("--no-header: key must be index: %w", err)
+				return res, fmt.Errorf("--noHeader: key must be index: %w", err)
 			}
 
 			idxKey = ki
@@ -60,7 +60,7 @@ func DupKey(files []string, o DupKeyOpts) (DupKeyResult, error) {
 				vi, err := parseIndex(s)
 				if err != nil {
 					rc.Close()
-					return res, fmt.Errorf("--no-header: by[%d] must be index: %w", i, err)
+					return res, fmt.Errorf("--noHeader: by[%d] must be index: %w", i, err)
 				}
 				idxBy[i] = vi
 			}

@@ -27,13 +27,13 @@ func FirstNonEmpty(files []string, o FirstOpts) (int, error) {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 		var idx int
 		if o.Config.NoHeader {
 			idx, err = strconv.Atoi(o.Column)
 			if err != nil || idx < 0 {
 				rc.Close()
-				return printed, fmt.Errorf("--no-header requires numeric index, got %q", o.Column)
+				return printed, fmt.Errorf("--noHeader requires numeric index, got %q", o.Column)
 			}
 		} else {
 			hdr, err := cr.Read()

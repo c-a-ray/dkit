@@ -24,7 +24,7 @@ const (
 )
 
 // ValueOpts configures how column values are collected and printed
-// Column may be a header name or an index string when --no-header is set
+// Column may be a header name or an index string when --noHeader is set
 // FixedStart/FixedEnd enable fixed-width extraction (1-based, inclusive)
 type ValsOpts struct {
 	Column     string
@@ -64,7 +64,7 @@ func ColumnValues(files []string, o ValsOpts) error {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 
 		var idx int
 		var hdr []string
@@ -74,7 +74,7 @@ func ColumnValues(files []string, o ValsOpts) error {
 			idx, err = strconv.Atoi(o.Column)
 			if err != nil || idx < 0 {
 				rc.Close()
-				return fmt.Errorf("--no-header requires numeric column index, got %q", o.Column)
+				return fmt.Errorf("--noHeader requires numeric column index, got %q", o.Column)
 			}
 			// Resolve filter with no header
 			if !o.Filter.IsEmpty() {

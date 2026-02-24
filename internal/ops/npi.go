@@ -228,14 +228,14 @@ func NPIColValidate(files []string, o NPIColOpts) (int, error) {
 			continue
 		}
 		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
-		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
+		cr := core.NewCSVReader(r, o.Config)
 
 		var idx int
 		if o.Config.NoHeader {
 			i, err := strconv.Atoi(o.Column)
 			if err != nil || i < 0 {
 				rc.Close()
-				return 0, fmt.Errorf("--no-header requires numeric column index, got %q", o.Column)
+				return 0, fmt.Errorf("--noHeader requires numeric column index, got %q", o.Column)
 			}
 			idx = i
 		} else {
