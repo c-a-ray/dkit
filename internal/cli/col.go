@@ -28,6 +28,7 @@ func addColCmd(parent *cobra.Command, cfg *core.Config) {
 func newColCmpCmd(cfg *core.Config) *cobra.Command {
 	var ignoreCase, allowEmpty bool
 	var toFlag string
+	var whenFlags []string
 
 	cmd := &cobra.Command{
 		Use:   "cmp <A> <B[,C,...]> [files...]",
@@ -70,6 +71,11 @@ Examples:
 				}
 			}
 
+			filter, err := ops.ParseWhenFlags(whenFlags)
+			if err != nil {
+				return fmt.Errorf("invalid --when: %w", err)
+			}
+
 			res, err := ops.CompareColumns(list, ops.CompareOpts{
 				ColA:       A,
 				TargetCols: targets,
@@ -78,6 +84,7 @@ Examples:
 				Quiet:      cfg.Quiet,
 				Format:     format,
 				CSVPath:    csvPath,
+				Filter:     filter,
 				Config:     cfg,
 			})
 			if err != nil {
@@ -94,6 +101,7 @@ Examples:
 	cmd.Flags().BoolVar(&ignoreCase, "ignoreCase", false, "case-insensitive comparison")
 	cmd.Flags().BoolVar(&allowEmpty, "allowEmpty", false, "compare even if one/both empty")
 	cmd.Flags().StringVar(&toFlag, "to", "", "output format: lines (default), table, or 'csv /path/to/file.csv'")
+	cmd.Flags().StringArrayVarP(&whenFlags, "when", "w", nil, "filter rows by condition (repeatable, ANDed; use | for OR)")
 
 	return cmd
 }

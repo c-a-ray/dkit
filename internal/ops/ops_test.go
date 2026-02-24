@@ -992,6 +992,138 @@ func TestCompareZips(t *testing.T) {
 	})
 }
 
+// TestCompareColumnsWithFilter tests CompareColumns with --when filtering
+func TestCompareColumnsWithFilter(t *testing.T) {
+	cfg := testConfig()
+	cfg.Quiet = true
+
+	t.Run("filter reduces rows compared", func(t *testing.T) {
+		// compare.csv: ColA,ColB,ColC
+		// apple,apple,APPLE    → ColA==ColB (match)
+		// banana,banana,banana → ColA==ColB (match)
+		// cherry,Cherry,cherry → ColA!=ColB (mismatch)
+		// date,fig,date        → ColA!=ColB (mismatch)
+		//
+		// Without filter: 2 mismatches
+		// With ColC=cherry: only row 3 selected → 1 mismatch
+		filter, err := ParseWhenFlags([]string{"ColC=cherry"})
+		if err != nil {
+			t.Fatalf("parse filter: %v", err)
+		}
+
+		var res CompareResult
+		captureStderr(func() {
+			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Filter:     filter,
+				Quiet:      true,
+				Config:     cfg,
+			})
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Mismatches != 1 {
+			t.Errorf("expected 1 mismatch with filter, got %d", res.Mismatches)
+		}
+	})
+
+	t.Run("filter excludes all mismatches", func(t *testing.T) {
+		// ColC=banana selects only row 2 (banana,banana,banana) → 0 mismatches
+		filter, err := ParseWhenFlags([]string{"ColC=banana"})
+		if err != nil {
+			t.Fatalf("parse filter: %v", err)
+		}
+
+		var res CompareResult
+		captureStderr(func() {
+			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Filter:     filter,
+				Quiet:      true,
+				Config:     cfg,
+			})
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Mismatches != 0 {
+			t.Errorf("expected 0 mismatches with filter, got %d", res.Mismatches)
+		}
+	})
+
+	t.Run("filter with OR", func(t *testing.T) {
+		// ColC=cherry|ColC=date selects rows 3 and 4 → 2 mismatches
+		filter, err := ParseWhenFlags([]string{"ColC=cherry|ColC=date"})
+		if err != nil {
+			t.Fatalf("parse filter: %v", err)
+		}
+
+		var res CompareResult
+		captureStderr(func() {
+			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Filter:     filter,
+				Quiet:      true,
+				Config:     cfg,
+			})
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Mismatches != 2 {
+			t.Errorf("expected 2 mismatches with OR filter, got %d", res.Mismatches)
+		}
+	})
+
+	t.Run("filter with not equal", func(t *testing.T) {
+		// ColB!=apple excludes row 1, leaving rows 2,3,4 → 2 mismatches
+		filter, err := ParseWhenFlags([]string{"ColB!=apple"})
+		if err != nil {
+			t.Fatalf("parse filter: %v", err)
+		}
+
+		var res CompareResult
+		captureStderr(func() {
+			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Filter:     filter,
+				Quiet:      true,
+				Config:     cfg,
+			})
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Mismatches != 2 {
+			t.Errorf("expected 2 mismatches with != filter, got %d", res.Mismatches)
+		}
+	})
+
+	t.Run("empty filter matches all rows", func(t *testing.T) {
+		var res CompareResult
+		var err error
+		captureStderr(func() {
+			res, err = CompareColumns([]string{testdataPath("compare.csv")}, CompareOpts{
+				ColA:       "ColA",
+				TargetCols: []string{"ColB"},
+				Quiet:      true,
+				Config:     cfg,
+			})
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.Mismatches != 2 {
+			t.Errorf("expected 2 mismatches without filter, got %d", res.Mismatches)
+		}
+	})
+}
+
 // TestCompareColumnsEdgeCases tests edge cases in CompareColumns
 func TestCompareColumnsEdgeCases(t *testing.T) {
 	cfg := testConfig()

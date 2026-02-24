@@ -31,6 +31,7 @@ type CompareOpts struct {
 	Quiet      bool
 	Format     OutputFormat
 	CSVPath    string // output path when Format == OutputCSV
+	Filter     Filter // row filter conditions (--when flags)
 	Config     *core.Config
 }
 
@@ -73,6 +74,7 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 		cr := core.NewRecordReader(r, o.Config)
 		var iA int
 		targetIdxs := make([]int, len(o.TargetCols))
+		var resolvedFilter ResolvedFilter
 
 		if o.Config.NoHeader {
 			ia, err := parseIndex(o.ColA)
@@ -89,6 +91,14 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 					return res, fmt.Errorf("--noHeader: target col %q must be index: %w", col, err)
 				}
 				targetIdxs[i] = idx
+			}
+
+			if !o.Filter.IsEmpty() {
+				resolvedFilter, err = o.Filter.Resolve(nil, true)
+				if err != nil {
+					rc.Close()
+					return res, err
+				}
 			}
 		} else {
 			hdr, err := cr.Read()
@@ -123,6 +133,15 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 				rc.Close()
 				continue
 			}
+
+			if !o.Filter.IsEmpty() {
+				resolvedFilter, err = o.Filter.Resolve(hdr, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[WARN] %s: %v\n", path, err)
+					rc.Close()
+					continue
+				}
+			}
 		}
 
 		line := 1
@@ -140,6 +159,11 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 				break
 			}
 			res.RowsSeen++
+
+			if !resolvedFilter.Match(rec) {
+				line++
+				continue
+			}
 
 			// Check if any index is out of bounds
 			if iA >= len(rec) {
