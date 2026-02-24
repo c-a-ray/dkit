@@ -25,7 +25,7 @@ const (
 
 // ValueOpts configures how column values are collected and printed
 // Column may be a header name or an index string when --noHeader is set
-// FixedStart/FixedEnd enable fixed-width extraction (1-based, inclusive)
+// FixedStart/FixedEnd enable fixed-width extraction (0-based, inclusive start, exclusive end)
 type ValsOpts struct {
 	Column     string
 	Mode       ValsMode
@@ -46,12 +46,12 @@ func ColumnValues(files []string, o ValsOpts) error {
 	freq := map[string]int{}
 
 	// Check for incompatible options
-	if !o.Filter.IsEmpty() && o.FixedStart > 0 && o.FixedEnd >= o.FixedStart {
+	if !o.Filter.IsEmpty() && o.FixedEnd > o.FixedStart {
 		return errors.New("--when and --fixed-width cannot be used together")
 	}
 
 	for _, path := range files {
-		if o.FixedStart > 0 && o.FixedEnd >= o.FixedStart {
+		if o.FixedEnd > o.FixedStart {
 			if err := scanFixed(path, o, uniq, freq); err != nil {
 				fmt.Fprintf(os.Stderr, "[WARN] %s: %v\n", path, err)
 			}
@@ -184,8 +184,8 @@ func scanFixed(path string, o ValsOpts, uniq map[string]struct{}, freq map[strin
 		return err
 	}
 	defer f.Close()
-	start := o.FixedStart - 1
-	width := o.FixedEnd - o.FixedStart + 1
+	start := o.FixedStart
+	end := o.FixedEnd
 	s := bufio.NewScanner(f)
 
 	var lines []string
@@ -208,8 +208,8 @@ func scanFixed(path string, o ValsOpts, uniq map[string]struct{}, freq map[strin
 			continue
 		}
 
-		end := min(start+width, len(line))
-		v := strings.TrimSpace(line[start:end])
+		clamp := min(end, len(line))
+		v := strings.TrimSpace(line[start:clamp])
 		if v == "" && o.NullToken != "" {
 			v = o.NullToken
 		}

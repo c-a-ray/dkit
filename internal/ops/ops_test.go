@@ -314,7 +314,7 @@ func TestColumnValues(t *testing.T) {
 			Column:     "Name",
 			Mode:       ValsUniq,
 			Filter:     filter,
-			FixedStart: 1,
+			FixedStart: 0,
 			FixedEnd:   5,
 			Config:     cfg,
 		})
@@ -784,8 +784,8 @@ func TestColumnValuesFixedWidth(t *testing.T) {
 			err := ColumnValues([]string{testdataPath("fixed_width.txt")}, ValsOpts{
 				Column:     "ignored", // not used in fixed-width mode
 				Mode:       ValsUniq,
-				FixedStart: 5,  // NAME column starts at position 5
-				FixedEnd:   14, // NAME column ends at position 14
+				FixedStart: 4,  // NAME column starts at index 4
+				FixedEnd:   14, // NAME column ends before index 14
 				Config:     cfg,
 			})
 			if err != nil {
@@ -802,7 +802,7 @@ func TestColumnValuesFixedWidth(t *testing.T) {
 			err := ColumnValues([]string{testdataPath("fixed_width.txt")}, ValsOpts{
 				Column:     "ignored",
 				Mode:       ValsFreq,
-				FixedStart: 1,
+				FixedStart: 0,
 				FixedEnd:   3, // ID column
 				Config:     cfg,
 			})

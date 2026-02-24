@@ -160,7 +160,7 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&nullTok, "null-token", "<EMPTY>", "token to print for empty cells (freq only)")
-	cmd.Flags().StringVar(&fixed, "fixed-width", "", "use fixed-width extraction START:END (1-based)")
+	cmd.Flags().StringVar(&fixed, "fixed-width", "", "use fixed-width extraction START:END (0-based, exclusive end)")
 	cmd.Flags().StringArrayVarP(&whenFlags, "when", "w", nil, "filter rows by condition (repeatable, ANDed; use | for OR)")
 
 	return cmd
