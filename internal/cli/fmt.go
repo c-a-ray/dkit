@@ -19,7 +19,7 @@ func addFmtCmd(root *cobra.Command, cfg *core.Config) {
 	cmd := &cobra.Command{
 		Use:   "fmt [flags] <files...>",
 		Short: "Rewrite files with different formatting",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.MinimumNArgs(0),
 		Example: `
 # TSV -> PSV, write to stdout
 dkit fmt --in-delim '\t' --out-delim '|' input.tsv > output.psv
@@ -45,7 +45,12 @@ dkit fmt --in-delim comma --out-delim tab --inplace *.csv`,
 				return fmt.Errorf("--out-delim: %w", err)
 			}
 
-			if err = validate(args, outDir, outPath, inPlace); err != nil {
+			files, err := resolveFiles(args, cfg)
+			if err != nil {
+				return err
+			}
+
+			if err = validate(files, outDir, outPath, inPlace); err != nil {
 				return err
 			}
 
@@ -66,7 +71,7 @@ dkit fmt --in-delim comma --out-delim tab --inplace *.csv`,
 				InPlace:    inPlace,
 				Config:     cfg,
 			}
-			return ops.RewriteDelimiter(args, opts)
+			return ops.RewriteDelimiter(files, opts)
 		},
 	}
 

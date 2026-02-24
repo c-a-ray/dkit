@@ -101,12 +101,7 @@ Examples:
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			col := args[0]
-			files := args[1:]
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[1:], cfg)
 			if err != nil {
 				return err
 			}

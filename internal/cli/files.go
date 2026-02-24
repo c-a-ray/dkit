@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/c-a-ray/dkit/internal/core"
@@ -29,11 +28,7 @@ func newFilesWithCmd(cfg *core.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			col := args[0]
 			val := args[1]
-			files := args[2:]
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[2:], cfg)
 			if err != nil {
 				return err
 			}

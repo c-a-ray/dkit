@@ -9,14 +9,16 @@ import (
 
 // Config holds runtime options for reading and processing tabular data
 type Config struct {
-	Delim      rune
-	Encoding   string
-	NoHeader   bool
-	Quiet      bool
-	LazyQuotes     bool
-	SkipStart      int
-	SkipEnd        int
+	Delim           rune
+	Encoding        string
+	NoHeader        bool
+	Quiet           bool
+	LazyQuotes      bool
+	SkipStart       int
+	SkipEnd         int
 	FieldsPerRecord int
+	Files           []string
+	FixedColumns    []FixedColumnDef
 }
 
 // NewConfig returns a Config initialized with default values
@@ -30,62 +32,79 @@ func NewConfig() *Config {
 	}
 }
 
-// FromFlags updates the Config fields from a parsed FlagSet
+// FromFlags updates the Config fields from a parsed FlagSet.
+// Only flags explicitly set by the user are applied, so that config file
+// values are not overwritten by flag defaults.
 func (c *Config) FromFlags(fs *pflag.FlagSet) error {
-	d, err := fs.GetString("delim")
-	if err != nil {
-		return err
+	if fs.Changed("delim") {
+		d, err := fs.GetString("delim")
+		if err != nil {
+			return err
+		}
+		dr, err := ParseDelim(d)
+		if err != nil {
+			return err
+		}
+		c.Delim = dr
 	}
 
-	dr, err := ParseDelim(d)
-	if err != nil {
-		return err
+	if fs.Changed("encoding") {
+		enc, err := fs.GetString("encoding")
+		if err != nil {
+			return err
+		}
+		c.Encoding = enc
 	}
-	c.Delim = dr
 
-	enc, err := fs.GetString("encoding")
-	if err != nil {
-		return err
+	if fs.Changed("noHeader") {
+		nh, err := fs.GetBool("noHeader")
+		if err != nil {
+			return err
+		}
+		c.NoHeader = nh
 	}
-	c.Encoding = enc
 
-	nh, err := fs.GetBool("noHeader")
-	if err != nil {
-		return err
+	if fs.Changed("quiet") {
+		q, err := fs.GetBool("quiet")
+		if err != nil {
+			return err
+		}
+		c.Quiet = q
 	}
-	c.NoHeader = nh
 
-	q, err := fs.GetBool("quiet")
-	if err != nil {
-		return err
+	if fs.Changed("lazyQuotes") {
+		lq, err := fs.GetBool("lazyQuotes")
+		if err != nil {
+			return err
+		}
+		c.LazyQuotes = lq
 	}
-	c.Quiet = q
 
-	lq, err := fs.GetBool("lazyQuotes")
-	if err != nil {
-		return err
+	if fs.Changed("skipStart") {
+		ss, err := fs.GetInt("skipStart")
+		if err != nil {
+			return err
+		}
+		c.SkipStart = ss
 	}
-	c.LazyQuotes = lq
 
-	ss, err := fs.GetInt("skipStart")
-	if err != nil {
-		return err
+	if fs.Changed("skipEnd") {
+		se, err := fs.GetInt("skipEnd")
+		if err != nil {
+			return err
+		}
+		c.SkipEnd = se
 	}
-	c.SkipStart = ss
 
-	se, err := fs.GetInt("skipEnd")
-	if err != nil {
-		return err
-	}
-	c.SkipEnd = se
-
-	fpr, err := fs.GetString("fieldsPerRecord")
-	if err != nil {
-		return err
-	}
-	c.FieldsPerRecord, err = parseFieldsPerRecord(fpr)
-	if err != nil {
-		return err
+	if fs.Changed("fieldsPerRecord") {
+		fpr, err := fs.GetString("fieldsPerRecord")
+		if err != nil {
+			return err
+		}
+		c.FieldsPerRecord, err = parseFieldsPerRecord(fpr)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

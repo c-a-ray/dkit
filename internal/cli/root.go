@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/c-a-ray/dkit/internal/core"
 	"github.com/spf13/cobra"
 )
@@ -11,6 +14,26 @@ func NewRootCmd(cfg *core.Config) *cobra.Command {
 		Use:   "dkit",
 		Short: "A toolkit for exploring tabular data",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Load config file if .dkit exists in CWD
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			cfgPath, err := core.LoadDotfile(wd)
+			if err != nil {
+				return err
+			}
+			if cfgPath != "" {
+				fc, err := core.LoadFileConfig(cfgPath)
+				if err != nil {
+					return err
+				}
+				if err := fc.ApplyTo(cfg); err != nil {
+					return err
+				}
+			}
+
+			// CLI flags override config file values (only explicitly-set flags)
 			return cfg.FromFlags(cmd.Flags())
 		},
 	}
@@ -29,6 +52,19 @@ func NewRootCmd(cfg *core.Config) *cobra.Command {
 	addFmtCmd(rootCmd, cfg)
 	addCmpCmd(rootCmd, cfg)
 	addNPICmd(rootCmd, cfg)
+	addConfigCmd(rootCmd)
 
 	return rootCmd
+}
+
+// resolveFiles returns the expanded file list, falling back to cfg.Files
+// if no patterns are provided from command-line args.
+func resolveFiles(patterns []string, cfg *core.Config) ([]string, error) {
+	if len(patterns) == 0 {
+		patterns = cfg.Files
+	}
+	if len(patterns) == 0 {
+		return nil, fmt.Errorf("no files specified (provide file args or set a config file)")
+	}
+	return core.ExpandFiles(patterns)
 }

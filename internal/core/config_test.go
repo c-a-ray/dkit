@@ -136,6 +136,65 @@ func TestParseDelim(t *testing.T) {
 	}
 }
 
+func TestFromFlagsPreservesConfigValues(t *testing.T) {
+	// Simulate: config file sets values, then FromFlags with no explicit flags should preserve them
+	cfg := NewConfig()
+	cfg.Delim = '|'
+	cfg.Encoding = "latin1"
+	cfg.LazyQuotes = true
+	cfg.SkipStart = 2
+	cfg.SkipEnd = 1
+	cfg.FieldsPerRecord = -1
+
+	fs := testFlagSet() // no flags changed — all at defaults
+
+	err := cfg.FromFlags(fs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Delim != '|' {
+		t.Errorf("Delim changed to %q, want '|'", cfg.Delim)
+	}
+	if cfg.Encoding != "latin1" {
+		t.Errorf("Encoding changed to %q, want latin1", cfg.Encoding)
+	}
+	if !cfg.LazyQuotes {
+		t.Error("LazyQuotes should still be true")
+	}
+	if cfg.SkipStart != 2 {
+		t.Errorf("SkipStart = %d, want 2", cfg.SkipStart)
+	}
+	if cfg.SkipEnd != 1 {
+		t.Errorf("SkipEnd = %d, want 1", cfg.SkipEnd)
+	}
+	if cfg.FieldsPerRecord != -1 {
+		t.Errorf("FieldsPerRecord = %d, want -1", cfg.FieldsPerRecord)
+	}
+}
+
+func TestFromFlagsCLIOverridesConfig(t *testing.T) {
+	// Simulate: config file sets delimiter to pipe, CLI overrides to tab
+	cfg := NewConfig()
+	cfg.Delim = '|'
+	cfg.LazyQuotes = true
+
+	fs := testFlagSet()
+	fs.Set("delim", "tab") // explicitly set — should override
+
+	err := cfg.FromFlags(fs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Delim != '\t' {
+		t.Errorf("Delim = %q, want tab (CLI should override config)", cfg.Delim)
+	}
+	if !cfg.LazyQuotes {
+		t.Error("LazyQuotes should still be true (not overridden by CLI)")
+	}
+}
+
 func testFlagSet() *pflag.FlagSet {
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
 	fs.String("delim", ",", "")

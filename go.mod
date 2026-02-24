@@ -8,4 +8,7 @@ require (
 	golang.org/x/text v0.29.0
 )
 
-require github.com/inconshreveable/mousetrap v1.1.0 // indirect
+require (
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)

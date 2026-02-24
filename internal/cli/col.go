@@ -45,12 +45,7 @@ Examples:
 			A := args[0]
 			targets := splitComma(args[1])
 
-			files := args[2:]
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[2:], cfg)
 			if err != nil {
 				return err
 			}
@@ -115,17 +110,12 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sub := args[0]
 			col := args[1]
-			files := args[2:]
 
 			if sub != "uniq" && sub != "freq" {
 				return fmt.Errorf("first arg must be uniq|freq")
 			}
 
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[2:], cfg)
 			if err != nil {
 				return err
 			}
@@ -174,12 +164,7 @@ func newColFirstCmd(cfg *core.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			col := args[0]
 
-			files := args[1:]
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[1:], cfg)
 			if err != nil {
 				return err
 			}
@@ -214,14 +199,10 @@ func newColDupKeyCmd(cfg *core.Config) *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
-			files := args[1:]
 			if by == "" {
 				return fmt.Errorf("--by is required (comma-separated columns)")
 			}
-			if len(files) == 0 {
-				return fmt.Errorf("no files")
-			}
-			list, err := core.ExpandFiles(files)
+			list, err := resolveFiles(args[1:], cfg)
 			if err != nil {
 				return err
 			}
@@ -260,9 +241,9 @@ func newColListCmd(cfg *core.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [files...]",
 		Short: "List unique column names across files",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			list, err := core.ExpandFiles(args)
+			list, err := resolveFiles(args, cfg)
 			if err != nil {
 				return err
 			}
