@@ -91,8 +91,8 @@ Examples:
 		},
 	}
 
-	cmd.Flags().BoolVar(&ignoreCase, "ignore-case", false, "case-insensitive comparison")
-	cmd.Flags().BoolVar(&allowEmpty, "allow-empty", false, "compare even if one/both empty")
+	cmd.Flags().BoolVar(&ignoreCase, "ignoreCase", false, "case-insensitive comparison")
+	cmd.Flags().BoolVar(&allowEmpty, "allowEmpty", false, "compare even if one/both empty")
 	cmd.Flags().StringVar(&toFlag, "to", "", "output format: lines (default), table, or 'csv /path/to/file.csv'")
 
 	return cmd
@@ -140,7 +140,7 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 			if fixed != "" {
 				var s, e int
 				if _, err := fmt.Sscanf(fixed, "%d:%d", &s, &e); err != nil {
-					return fmt.Errorf("--fixed-width expects START:END, got %q", fixed)
+					return fmt.Errorf("--fixedWidth expects START:END, got %q", fixed)
 				}
 				opt.FixedStart, opt.FixedEnd = s, e
 			}
@@ -149,8 +149,8 @@ func newColValsCmd(cfg *core.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&nullTok, "null-token", "<EMPTY>", "token to print for empty cells (freq only)")
-	cmd.Flags().StringVar(&fixed, "fixed-width", "", "use fixed-width extraction START:END (0-based, exclusive end)")
+	cmd.Flags().StringVar(&nullTok, "nullToken", "<EMPTY>", "token to print for empty cells (freq only)")
+	cmd.Flags().StringVar(&fixed, "fixedWidth", "", "use fixed-width extraction START:END (0-based, exclusive end)")
 	cmd.Flags().StringArrayVarP(&whenFlags, "when", "w", nil, "filter rows by condition (repeatable, ANDed; use | for OR)")
 
 	return cmd
@@ -227,9 +227,9 @@ func newColDupKeyCmd(cfg *core.Config) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&by, "by", "", "comma-separated list of columns forming the person tuple (e.g., \"Patient First Name,Patient Last Name\")")
-	cmd.Flags().BoolVar(&ignoreCase, "ignore-case", false, "case-insensitive comparisons")
-	cmd.Flags().BoolVar(&requireAll, "require-all", false, "skip rows where any BY field is empty")
-	cmd.Flags().StringVar(&nullTok, "null-token", "<EMPTY>", "token to substitute for empty BY fields (ignored if --require-all)")
+	cmd.Flags().BoolVar(&ignoreCase, "ignoreCase", false, "case-insensitive comparisons")
+	cmd.Flags().BoolVar(&requireAll, "requireAll", false, "skip rows where any BY field is empty")
+	cmd.Flags().StringVar(&nullTok, "nullToken", "<EMPTY>", "token to substitute for empty BY fields (ignored if --requireAll)")
 
 	return cmd
 }

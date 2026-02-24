@@ -51,8 +51,8 @@ of search parameters.
 
 Examples:
   dkit npi lookup --number 1164905659
-  dkit npi lookup --first_name John --last_name Smith --state NY
-  dkit npi lookup --organization_name "Mayo Clinic" --state MN`,
+  dkit npi lookup --firstName John --lastName Smith --state NY
+  dkit npi lookup --organizationName "Mayo Clinic" --state MN`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := ops.LookupNPI(o)
 			if err != nil {
@@ -67,17 +67,17 @@ Examples:
 	}
 
 	cmd.Flags().StringVar(&o.Number, "number", "", "NPI number")
-	cmd.Flags().StringVar(&o.EnumerationType, "enumeration_type", "", "NPI-1 (individual) or NPI-2 (organization)")
-	cmd.Flags().StringVar(&o.TaxonomyDesc, "taxonomy_description", "", "taxonomy description")
-	cmd.Flags().StringVar(&o.FirstName, "first_name", "", "provider first name")
-	cmd.Flags().BoolVar(&o.UseFirstNameAlias, "use_first_name_alias", false, "include first name aliases")
-	cmd.Flags().StringVar(&o.LastName, "last_name", "", "provider last name")
-	cmd.Flags().StringVar(&o.OrganizationName, "organization_name", "", "organization name")
-	cmd.Flags().StringVar(&o.AddressPurpose, "address_purpose", "", "LOCATION or MAILING")
+	cmd.Flags().StringVar(&o.EnumerationType, "enumerationType", "", "NPI-1 (individual) or NPI-2 (organization)")
+	cmd.Flags().StringVar(&o.TaxonomyDesc, "taxonomyDescription", "", "taxonomy description")
+	cmd.Flags().StringVar(&o.FirstName, "firstName", "", "provider first name")
+	cmd.Flags().BoolVar(&o.UseFirstNameAlias, "useFirstNameAlias", false, "include first name aliases")
+	cmd.Flags().StringVar(&o.LastName, "lastName", "", "provider last name")
+	cmd.Flags().StringVar(&o.OrganizationName, "organizationName", "", "organization name")
+	cmd.Flags().StringVar(&o.AddressPurpose, "addressPurpose", "", "LOCATION or MAILING")
 	cmd.Flags().StringVar(&o.City, "city", "", "city")
 	cmd.Flags().StringVar(&o.State, "state", "", "state abbreviation")
-	cmd.Flags().StringVar(&o.PostalCode, "postal_code", "", "postal code")
-	cmd.Flags().StringVar(&o.CountryCode, "country_code", "", "country code (e.g. US)")
+	cmd.Flags().StringVar(&o.PostalCode, "postalCode", "", "postal code")
+	cmd.Flags().StringVar(&o.CountryCode, "countryCode", "", "country code (e.g. US)")
 	cmd.Flags().IntVar(&o.Limit, "limit", 0, "max results to return")
 	cmd.Flags().IntVar(&o.Skip, "skip", 0, "number of results to skip")
 

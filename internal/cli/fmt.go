@@ -22,27 +22,27 @@ func addFmtCmd(root *cobra.Command, cfg *core.Config) {
 		Args:  cobra.MinimumNArgs(0),
 		Example: `
 # TSV -> PSV, write to stdout
-dkit fmt --in-delim '\t' --out-delim '|' input.tsv > output.psv
+dkit fmt --inDelim '\t' --outDelim '|' input.tsv > output.psv
 
 # TSV -> PSV, write to file
-dkit fmt --in-delim tab --out-delim pipe -o output.psv input.tsv
+dkit fmt --inDelim tab --outDelim pipe -o output.psv input.tsv
 
 # CSV -> TSV for many files
-dkit fmt --in-delim ',' --out-delim '\t' --outdir out *.csv
+dkit fmt --inDelim ',' --outDelim '\t' --outdir out *.csv
 
 # CSV -> TSV, in place over many files
-dkit fmt --in-delim comma --out-delim tab --inplace *.csv`,
+dkit fmt --inDelim comma --outDelim tab --inplace *.csv`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if inDelimStr == "" || outDelimStr == "" {
-				return fmt.Errorf("--in-delim and --out-delim are required")
+				return fmt.Errorf("--inDelim and --outDelim are required")
 			}
 			inDelim, err := core.ParseDelim(inDelimStr)
 			if err != nil {
-				return fmt.Errorf("--in-delim: %w", err)
+				return fmt.Errorf("--inDelim: %w", err)
 			}
 			outDelim, err := core.ParseDelim(outDelimStr)
 			if err != nil {
-				return fmt.Errorf("--out-delim: %w", err)
+				return fmt.Errorf("--outDelim: %w", err)
 			}
 
 			files, err := resolveFiles(args, cfg)
@@ -75,15 +75,15 @@ dkit fmt --in-delim comma --out-delim tab --inplace *.csv`,
 		},
 	}
 
-	cmd.Flags().StringVar(&inDelimStr, "in-delim", "", "input field delimiter (single char or 'tab')")
-	cmd.Flags().StringVar(&outDelimStr, "out-delim", "", "output field delimiter (single char or 'tab')")
+	cmd.Flags().StringVar(&inDelimStr, "inDelim", "", "input field delimiter (single char or 'tab')")
+	cmd.Flags().StringVar(&outDelimStr, "outDelim", "", "output field delimiter (single char or 'tab')")
 	cmd.Flags().StringVarP(&outPath, "out", "o", "", "write to a single output file (requires exactly one input)")
 	cmd.Flags().StringVar(&outDir, "outdir", "", "write each input to this directory (one output per input)")
 	cmd.Flags().StringVar(&outExt, "ext", "", "output extension used with --outdir")
 	cmd.Flags().BoolVarP(&inPlace, "inplace", "i", false, "rewrite the input file(s) in place")
 
-	_ = cmd.MarkFlagRequired("in-delim")
-	_ = cmd.MarkFlagRequired("out-delim")
+	_ = cmd.MarkFlagRequired("inDelim")
+	_ = cmd.MarkFlagRequired("outDelim")
 
 	root.AddCommand(cmd)
 }

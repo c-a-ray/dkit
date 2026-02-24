@@ -47,7 +47,7 @@ func ColumnValues(files []string, o ValsOpts) error {
 
 	// Check for incompatible options
 	if !o.Filter.IsEmpty() && o.FixedEnd > o.FixedStart {
-		return errors.New("--when and --fixed-width cannot be used together")
+		return errors.New("--when and --fixedWidth cannot be used together")
 	}
 
 	for _, path := range files {

@@ -54,8 +54,8 @@ func newCmpZipsCmd(cfg *core.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&summaryOnly, "summary-only", "s", false, "show only summary, skip detailed diffs")
-	cmd.Flags().BoolVar(&ignoreMissing, "ignore-missing", false, "don't error if files are missing from one archive")
+	cmd.Flags().BoolVarP(&summaryOnly, "summaryOnly", "s", false, "show only summary, skip detailed diffs")
+	cmd.Flags().BoolVar(&ignoreMissing, "ignoreMissing", false, "don't error if files are missing from one archive")
 
 	return cmd
 }

@@ -47,6 +47,6 @@ func newFilesWithCmd(cfg *core.Config) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&ci, "case-insensitive", false, "case-insensitive match")
+	cmd.Flags().BoolVar(&ci, "caseInsensitive", false, "case-insensitive match")
 	return cmd
 }
