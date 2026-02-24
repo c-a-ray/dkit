@@ -63,7 +63,8 @@ func ColumnValues(files []string, o ValsOpts) error {
 			fmt.Fprintf(os.Stderr, "[WARN] cannot read %s: %v\n", path, err)
 			continue
 		}
-		cr := core.NewCSVReader(rc, o.Config.Delim, o.Config.LazyQuotes)
+		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
+		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
 
 		var idx int
 		var hdr []string
@@ -186,8 +187,23 @@ func scanFixed(path string, o ValsOpts, uniq map[string]struct{}, freq map[strin
 	start := o.FixedStart - 1
 	width := o.FixedEnd - o.FixedStart + 1
 	s := bufio.NewScanner(f)
+
+	var lines []string
 	for s.Scan() {
-		line := s.Text()
+		lines = append(lines, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+
+	if o.Config.SkipStart > 0 && o.Config.SkipStart < len(lines) {
+		lines = lines[o.Config.SkipStart:]
+	}
+	if o.Config.SkipEnd > 0 && o.Config.SkipEnd < len(lines) {
+		lines = lines[:len(lines)-o.Config.SkipEnd]
+	}
+
+	for _, line := range lines {
 		if start >= len(line) {
 			continue
 		}
@@ -204,5 +220,5 @@ func scanFixed(path string, o ValsOpts, uniq map[string]struct{}, freq map[strin
 			freq[v]++
 		}
 	}
-	return s.Err()
+	return nil
 }

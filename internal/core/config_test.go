@@ -34,6 +34,8 @@ func TestFromFlags(t *testing.T) {
 		fs.Bool("no-header", false, "")
 		fs.Bool("quiet", false, "")
 		fs.Bool("lazy-quotes", false, "")
+		fs.Int("skip-start", 0, "")
+		fs.Int("skip-end", 0, "")
 
 		// Set some non-default values
 		fs.Set("delim", "tab")
@@ -41,6 +43,8 @@ func TestFromFlags(t *testing.T) {
 		fs.Set("no-header", "true")
 		fs.Set("quiet", "true")
 		fs.Set("lazy-quotes", "true")
+		fs.Set("skip-start", "2")
+		fs.Set("skip-end", "3")
 
 		cfg := NewConfig()
 		err := cfg.FromFlags(fs)
@@ -63,6 +67,12 @@ func TestFromFlags(t *testing.T) {
 		if !cfg.LazyQuotes {
 			t.Error("LazyQuotes should be true")
 		}
+		if cfg.SkipStart != 2 {
+			t.Errorf("SkipStart = %d, want 2", cfg.SkipStart)
+		}
+		if cfg.SkipEnd != 3 {
+			t.Errorf("SkipEnd = %d, want 3", cfg.SkipEnd)
+		}
 	})
 
 	t.Run("invalid delimiter", func(t *testing.T) {
@@ -72,6 +82,8 @@ func TestFromFlags(t *testing.T) {
 		fs.Bool("no-header", false, "")
 		fs.Bool("quiet", false, "")
 		fs.Bool("lazy-quotes", false, "")
+		fs.Int("skip-start", 0, "")
+		fs.Int("skip-end", 0, "")
 
 		fs.Set("delim", "invalid-multi-char")
 

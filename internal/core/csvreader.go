@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
 	"io"
 	"os"
@@ -34,6 +35,41 @@ func OpenWithEncoding(path string, enc string) (io.ReadCloser, error) {
 		// Fallback: return raw and let ops decide; can add more encodings later
 		return f, nil
 	}
+}
+
+// SkipLines returns a reader that omits the first start lines and last end lines
+// from the underlying reader. If both are zero it returns r unchanged.
+func SkipLines(r io.Reader, start, end int) io.Reader {
+	if start == 0 && end == 0 {
+		return r
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return bytes.NewReader(data)
+	}
+
+	lines := bytes.SplitAfter(data, []byte("\n"))
+	// Remove trailing empty element produced when input ends with newline
+	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
+		lines = lines[:len(lines)-1]
+	}
+
+	if start > 0 {
+		if start >= len(lines) {
+			return strings.NewReader("")
+		}
+		lines = lines[start:]
+	}
+
+	if end > 0 {
+		if end >= len(lines) {
+			return strings.NewReader("")
+		}
+		lines = lines[:len(lines)-end]
+	}
+
+	return bytes.NewReader(bytes.Join(lines, nil))
 }
 
 // NewCSVReader returns a csv.Reader configured with the given delimiter and options

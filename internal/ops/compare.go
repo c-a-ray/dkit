@@ -69,7 +69,8 @@ func CompareColumns(files []string, o CompareOpts) (CompareResult, error) {
 			continue
 		}
 
-		cr := core.NewCSVReader(rc, o.Config.Delim, o.Config.LazyQuotes)
+		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
+		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
 		var iA int
 		targetIdxs := make([]int, len(o.TargetCols))
 

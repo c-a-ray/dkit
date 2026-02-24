@@ -20,6 +20,8 @@ func NewRootCmd(cfg *core.Config) *cobra.Command {
 	rootCmd.PersistentFlags().BoolP("no-header", "H", false, "treat first row as data (numeric column indexes)")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "suppress per-row output where applicable")
 	rootCmd.PersistentFlags().Bool("lazy-quotes", false, "allow bare quotes inside unquoted fields")
+	rootCmd.PersistentFlags().Int("skip-start", 0, "number of raw lines to skip at the start of each file")
+	rootCmd.PersistentFlags().Int("skip-end", 0, "number of raw lines to skip at the end of each file")
 
 	addColCmd(rootCmd, cfg)
 	addFilesCmd(rootCmd, cfg)

@@ -130,7 +130,8 @@ func writeFile(inPath string, w io.Writer, opts FmtOpts) error {
 	}
 	defer rc.Close()
 
-	r := core.NewCSVReader(rc, opts.Config.Delim, opts.Config.LazyQuotes)
+	sr := core.SkipLines(rc, opts.Config.SkipStart, opts.Config.SkipEnd)
+	r := core.NewCSVReader(sr, opts.Config.Delim, opts.Config.LazyQuotes)
 	out := csv.NewWriter(w)
 	out.Comma = opts.OutDelim
 

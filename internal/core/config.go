@@ -13,6 +13,8 @@ type Config struct {
 	NoHeader   bool
 	Quiet      bool
 	LazyQuotes bool
+	SkipStart  int
+	SkipEnd    int
 }
 
 // NewConfig returns a Config initialized with default values
@@ -62,6 +64,18 @@ func (c *Config) FromFlags(fs *pflag.FlagSet) error {
 		return err
 	}
 	c.LazyQuotes = lq
+
+	ss, err := fs.GetInt("skip-start")
+	if err != nil {
+		return err
+	}
+	c.SkipStart = ss
+
+	se, err := fs.GetInt("skip-end")
+	if err != nil {
+		return err
+	}
+	c.SkipEnd = se
 
 	return nil
 }

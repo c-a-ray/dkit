@@ -227,7 +227,8 @@ func NPIColValidate(files []string, o NPIColOpts) (int, error) {
 			fmt.Fprintf(os.Stderr, "[WARN] cannot read %s: %v\n", path, err)
 			continue
 		}
-		cr := core.NewCSVReader(rc, o.Config.Delim, o.Config.LazyQuotes)
+		r := core.SkipLines(rc, o.Config.SkipStart, o.Config.SkipEnd)
+		cr := core.NewCSVReader(r, o.Config.Delim, o.Config.LazyQuotes)
 
 		var idx int
 		if o.Config.NoHeader {
