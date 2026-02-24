@@ -1,0 +1,6 @@
+--- REPORT HEADER: GENERATED 2024-02-20 ---
+ID|FirstName|LastName|City|Status
+006|Frank|Miller|Seattle|active
+007|Grace|Wilson|Denver|inactive
+008|Hank|Moore|Portland|active
+--- END OF REPORT ---

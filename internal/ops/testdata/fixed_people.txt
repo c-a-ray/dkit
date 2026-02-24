@@ -1,0 +1,4 @@
+John      Smith     NYC       active
+Jane      Doe       LA        inactive
+Bob       Jones     Chicago   active
+Alice     Williams  Houston   inactive

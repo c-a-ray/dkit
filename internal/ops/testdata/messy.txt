@@ -1,0 +1,8 @@
+--- REPORT HEADER: GENERATED 2024-01-15 ---
+ID|FirstName|LastName|City|Status
+001|Alice|Smith|New York|active
+002|Bob|Jones|Los Angeles|active
+003|Carol|Williams|Chicago|inactive
+004|Dave|Brown|Houston|active
+005|Eve|Davis|Phoenix|inactive
+--- END OF REPORT ---
